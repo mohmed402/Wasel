@@ -33,6 +33,33 @@ const supabaseAdmin = supabaseUrl && supabaseServiceKey
       auth: {
         autoRefreshToken: false,
         persistSession: false
+      },
+      global: {
+        fetch: async (url, options = {}) => {
+          // Increase timeout for server-side requests
+          const timeout = 30000 // 30 seconds
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => {
+            controller.abort()
+          }, timeout)
+          
+          try {
+            const response = await fetch(url, {
+              ...options,
+              signal: controller.signal
+            })
+            clearTimeout(timeoutId)
+            return response
+          } catch (error) {
+            clearTimeout(timeoutId)
+            if (error.name === 'AbortError') {
+              const timeoutError = new Error(`Request timeout after ${timeout}ms`)
+              timeoutError.code = 'TIMEOUT'
+              throw timeoutError
+            }
+            throw error
+          }
+        }
       }
     })
   : null
@@ -713,26 +740,63 @@ const financialAccountOperations = {
    * @returns {Promise<Array>} Array of financial accounts
    */
   async getAll({ accountType, activeOnly = true, limit = 100, offset = 0 } = {}) {
-    if (!supabase) throw new Error('Supabase client not initialized')
-    
-    let query = supabase
-      .from('financial_accounts')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
-    
-    if (accountType) {
-      query = query.eq('account_type', accountType)
+    if (!supabaseAdmin && !supabase) {
+      throw new Error('Supabase client not initialized')
     }
     
-    if (activeOnly) {
-      query = query.eq('is_active', true)
+    // Use admin client for server-side operations (preferred) or fallback to regular client
+    const client = supabaseAdmin || supabase
+    
+    // Retry logic with exponential backoff for network errors
+    const maxRetries = 3
+    let lastError
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        let query = client
+          .from('financial_accounts')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .range(offset, offset + limit - 1)
+        
+        if (accountType) {
+          query = query.eq('account_type', accountType)
+        }
+        
+        if (activeOnly) {
+          query = query.eq('is_active', true)
+        }
+        
+        const { data, error } = await query
+        
+        if (error) throw error
+        return data || []
+      } catch (error) {
+        lastError = error
+        
+        // Don't retry on non-network errors (like validation errors)
+        const isNetworkError = error.message?.includes('timeout') || 
+                              error.message?.includes('TIMEOUT') || 
+                              error.message?.includes('ECONNREFUSED') ||
+                              error.message?.includes('fetch failed') ||
+                              error.code?.includes('TIMEOUT') ||
+                              error.code === 'UND_ERR_CONNECT_TIMEOUT'
+        
+        if (!isNetworkError) {
+          throw error
+        }
+        
+        // Wait before retrying (exponential backoff: 1s, 2s, 4s)
+        if (attempt < maxRetries - 1) {
+          const delay = Math.min(1000 * Math.pow(2, attempt), 5000)
+          console.warn(`[Financial Accounts] Retrying query (attempt ${attempt + 1}/${maxRetries}) after ${delay}ms...`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+        }
+      }
     }
     
-    const { data, error } = await query
-    
-    if (error) throw error
-    return data || []
+    // If all retries failed, throw the last error
+    throw lastError || new Error('Failed to fetch financial accounts after retries')
   },
 
   /**

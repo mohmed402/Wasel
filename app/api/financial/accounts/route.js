@@ -14,10 +14,31 @@ export async function GET(request) {
 
     return NextResponse.json(accounts, { status: 200 })
   } catch (error) {
-    console.error('Error fetching financial accounts:', error)
+    console.error('Error fetching financial accounts:', {
+      message: error.message,
+      details: error.details || error.hint || error.code,
+      stack: error.stack
+    })
+    
+    // Provide more helpful error messages
+    let errorMessage = 'Failed to fetch financial accounts'
+    let statusCode = 500
+    
+    if (error.message?.includes('timeout') || error.message?.includes('TIMEOUT') || error.message?.includes('ECONNREFUSED')) {
+      errorMessage = 'Connection timeout: Unable to reach the database. Please check your network connection and try again.'
+      statusCode = 503 // Service Unavailable
+    } else if (error.message?.includes('not initialized')) {
+      errorMessage = 'Database connection not configured. Please check your environment variables.'
+      statusCode = 500
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to fetch financial accounts', details: error.message },
-      { status: 500 }
+      { 
+        error: errorMessage, 
+        details: error.message,
+        code: error.code || 'UNKNOWN_ERROR'
+      },
+      { status: statusCode }
     )
   }
 }

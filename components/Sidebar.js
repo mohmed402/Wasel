@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import styles from './Sidebar.module.css'
 import {
   HiHome,
@@ -13,11 +13,48 @@ import {
   HiChartBar,
   HiCog,
   HiChevronDown,
-  HiLibrary
+  HiLibrary,
+  HiMenu,
+  HiX
 } from 'react-icons/hi'
 
 export default function Sidebar() {
   const [expandedSections, setExpandedSections] = useState({})
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768)
+      if (window.innerWidth > 768) {
+        setIsMobileMenuOpen(false)
+      }
+    }
+
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  useEffect(() => {
+    // Prevent body scroll when mobile menu is open
+    if (isMobileMenuOpen && isMobile) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [isMobileMenuOpen, isMobile])
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen)
+  }
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false)
+  }
 
   const toggleSection = (section) => {
     setExpandedSections(prev => ({
@@ -127,58 +164,95 @@ export default function Sidebar() {
   ]
 
   return (
-    <aside className={styles.sidebar}>
-      <div className={styles.logo}>
-        <h1 className={styles.logoText}>واصل</h1>
-      </div>
-      
-      <nav className={styles.nav}>
-        <ul className={styles.menuList}>
-          {menuItems.map((item) => {
-            const IconComponent = item.icon
-            return (
-              <li key={item.id} className={styles.menuItem}>
-                {item.children ? (
-                  <>
-                    <button
-                      className={styles.menuButton}
-                      onClick={() => toggleSection(item.id)}
-                      aria-expanded={expandedSections[item.id]}
+    <>
+      {/* Mobile Menu Button */}
+      <button 
+        className={styles.mobileMenuButton}
+        onClick={toggleMobileMenu}
+        aria-label="Toggle menu"
+      >
+        {isMobileMenuOpen ? <HiX /> : <HiMenu />}
+      </button>
+
+      {/* Overlay for mobile */}
+      {isMobileMenuOpen && isMobile && (
+        <div 
+          className={styles.overlay}
+          onClick={closeMobileMenu}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside className={`${styles.sidebar} ${isMobileMenuOpen && isMobile ? styles.sidebarOpen : ''}`}>
+        <div className={styles.logo}>
+          <h1 className={styles.logoText}>واصل</h1>
+          {isMobile && (
+            <button 
+              className={styles.closeButton}
+              onClick={closeMobileMenu}
+              aria-label="Close menu"
+            >
+              <HiX />
+            </button>
+          )}
+        </div>
+        
+        <nav className={styles.nav}>
+          <ul className={styles.menuList}>
+            {menuItems.map((item) => {
+              const IconComponent = item.icon
+              return (
+                <li key={item.id} className={styles.menuItem}>
+                  {item.children ? (
+                    <>
+                      <button
+                        className={styles.menuButton}
+                        onClick={() => toggleSection(item.id)}
+                        aria-expanded={expandedSections[item.id]}
+                      >
+                        <span className={styles.icon}>
+                          <IconComponent />
+                        </span>
+                        <span className={styles.label}>{item.label}</span>
+                        <span className={`${styles.arrow} ${expandedSections[item.id] ? styles.arrowOpen : ''}`}>
+                          <HiChevronDown />
+                        </span>
+                      </button>
+                      {expandedSections[item.id] && (
+                        <ul className={styles.submenu}>
+                          {item.children.map((child, index) => (
+                            <li key={index} className={styles.submenuItem}>
+                              <a 
+                                href={child.path} 
+                                className={styles.submenuLink}
+                                onClick={closeMobileMenu}
+                              >
+                                {child.label}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  ) : (
+                    <a 
+                      href={item.path} 
+                      className={styles.menuLink}
+                      onClick={closeMobileMenu}
                     >
                       <span className={styles.icon}>
                         <IconComponent />
                       </span>
                       <span className={styles.label}>{item.label}</span>
-                      <span className={`${styles.arrow} ${expandedSections[item.id] ? styles.arrowOpen : ''}`}>
-                        <HiChevronDown />
-                      </span>
-                    </button>
-                    {expandedSections[item.id] && (
-                      <ul className={styles.submenu}>
-                        {item.children.map((child, index) => (
-                          <li key={index} className={styles.submenuItem}>
-                            <a href={child.path} className={styles.submenuLink}>
-                              {child.label}
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </>
-                ) : (
-                  <a href={item.path} className={styles.menuLink}>
-                    <span className={styles.icon}>
-                      <IconComponent />
-                    </span>
-                    <span className={styles.label}>{item.label}</span>
-                  </a>
-                )}
-              </li>
-            )
-          })}
-        </ul>
-      </nav>
-    </aside>
+                    </a>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </nav>
+      </aside>
+    </>
   )
 }
 

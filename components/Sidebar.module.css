@@ -10,12 +10,18 @@
   top: 0;
   overflow-y: auto;
   box-shadow: -2px 0 8px rgba(0, 0, 0, 0.05);
+  z-index: 1000;
+  transition: transform 0.3s ease-in-out;
 }
 
 .logo {
   padding: 1.5rem;
   border-bottom: 1px solid #E5E7EB;
   background: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
 }
 
 .logoText {
@@ -181,14 +187,110 @@
   background: #9CA3AF;
 }
 
+/* Mobile Menu Button */
+.mobileMenuButton {
+  display: none;
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1001;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 0.75rem;
+  cursor: pointer;
+  font-size: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+}
+
+.mobileMenuButton:hover {
+  background: var(--accent);
+  transform: scale(1.05);
+}
+
+.mobileMenuButton:active {
+  transform: scale(0.95);
+}
+
+/* Close button inside sidebar */
+.closeButton {
+  display: none;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.closeButton:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Overlay for mobile */
+.overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
+  .mobileMenuButton {
+    display: block;
+  }
+
+  .closeButton {
+    display: block;
+  }
+
+  .sidebar {
+    width: 280px;
+    max-width: 85vw;
+    transform: translateX(100%);
+    border-left: 1px solid #E5E7EB;
+    box-shadow: -2px 0 16px rgba(0, 0, 0, 0.2);
+  }
+
+  .sidebarOpen {
+    transform: translateX(0);
+  }
+
+  .overlay {
+    display: block;
+  }
+}
+
+@media (max-width: 480px) {
   .sidebar {
     width: 100%;
-    height: auto;
-    position: relative;
-    border-left: none;
-    border-bottom: 1px solid #E5E7EB;
+    max-width: 100vw;
+  }
+
+  .mobileMenuButton {
+    top: 0.75rem;
+    right: 0.75rem;
+    padding: 0.625rem;
+    font-size: 1.25rem;
   }
 }
 
