@@ -1,0 +1,187 @@
+.tableContainer {
+  background: white;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Tajawal', sans-serif;
+}
+
+.table thead {
+  background: var(--secondary);
+  border-bottom: 2px solid #E5E7EB;
+}
+
+.table th {
+  padding: 1rem;
+  text-align: right;
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 1rem;
+  text-align: right;
+  border-bottom: 1px solid #F3F4F6;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.table tbody tr:hover {
+  background: #F9FAFB;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.orderId {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.amount {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.badgePending {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.badgeOrdered {
+  background: #DBEAFE;
+  color: #1E40AF;
+}
+
+.badgeShipping {
+  background: #CCFBF1;
+  color: #065F46;
+}
+
+.badgeDelivered {
+  background: #D1FAE5;
+  color: #065F46;
+}
+
+.badgeProblem {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+.badgeDefault {
+  background: var(--secondary);
+  color: var(--text);
+}
+
+.badgeSuccess {
+  background: #D1FAE5;
+  color: #065F46;
+}
+
+.badgeWarning {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.issueBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--error);
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.issueBadge svg {
+  font-size: 1rem;
+}
+
+.noIssue {
+  color: #6B7280;
+  font-size: 0.9rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--secondary);
+  border: 1px solid #E5E7EB;
+  border-radius: var(--border-radius);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Tajawal', sans-serif;
+}
+
+.actionButton:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.actionButton svg {
+  font-size: 1rem;
+}
+
+.emptyState {
+  background: white;
+  border-radius: var(--border-radius);
+  padding: 3rem;
+  text-align: center;
+  color: #6B7280;
+  font-size: 1.1rem;
+}
+
+@media (max-width: 1200px) {
+  .tableContainer {
+    overflow-x: auto;
+  }
+
+  .table {
+    min-width: 1000px;
+  }
+}
+
+@media (max-width: 768px) {
+  .actions {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .actionButton {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+
+
+
