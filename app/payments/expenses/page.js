@@ -256,7 +256,7 @@ export default function ExpensesPage() {
             ) : expenses.length === 0 ? (
               <tr>
                 <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: '#6B7280' }}>
-                  لا توجد مصروفات. اضغط على "إضافة مصروف جديد" لبدء الإضافة.
+                  لا توجد مصروفات. اضغط على &quot;إضافة مصروف جديد&quot; لبدء الإضافة.
                 </td>
               </tr>
             ) : (

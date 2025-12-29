@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import styles from '../financial.module.css'
 import { 
@@ -42,11 +42,7 @@ export default function AllTransactionsPage() {
     dateTo: ''
   })
 
-  useEffect(() => {
-    fetchData()
-  }, [filters])
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true)
 
@@ -105,7 +101,11 @@ export default function AllTransactionsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
   const convertToBase = (amount, fromCurrency) => {
     if (fromCurrency === baseCurrency) return amount

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import styles from '../financial.module.css'
 import { 
@@ -41,11 +41,42 @@ export default function FinancialReportsPage() {
   const [liabilities, setLiabilities] = useState([])
   const [transactions, setTransactions] = useState([])
 
-  useEffect(() => {
-    fetchData()
+  const getDateRange = useCallback(() => {
+    const today = new Date()
+    let dateFrom, dateTo
+
+    switch (reportPeriod) {
+      case 'day':
+        dateFrom = today.toISOString().split('T')[0]
+        dateTo = today.toISOString().split('T')[0]
+        break
+      case 'week':
+        const weekStart = new Date(today)
+        weekStart.setDate(today.getDate() - today.getDay())
+        dateFrom = weekStart.toISOString().split('T')[0]
+        dateTo = today.toISOString().split('T')[0]
+        break
+      case 'month':
+        dateFrom = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0]
+        dateTo = today.toISOString().split('T')[0]
+        break
+      case 'year':
+        dateFrom = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0]
+        dateTo = today.toISOString().split('T')[0]
+        break
+      case 'custom':
+        dateFrom = customDateFrom
+        dateTo = customDateTo
+        break
+      default:
+        dateFrom = null
+        dateTo = null
+    }
+
+    return { dateFrom, dateTo }
   }, [reportPeriod, customDateFrom, customDateTo])
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true)
 
@@ -105,42 +136,11 @@ export default function FinancialReportsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [getDateRange])
 
-  const getDateRange = () => {
-    const today = new Date()
-    let dateFrom, dateTo
-
-    switch (reportPeriod) {
-      case 'day':
-        dateFrom = today.toISOString().split('T')[0]
-        dateTo = today.toISOString().split('T')[0]
-        break
-      case 'week':
-        const weekStart = new Date(today)
-        weekStart.setDate(today.getDate() - today.getDay())
-        dateFrom = weekStart.toISOString().split('T')[0]
-        dateTo = today.toISOString().split('T')[0]
-        break
-      case 'month':
-        dateFrom = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0]
-        dateTo = today.toISOString().split('T')[0]
-        break
-      case 'year':
-        dateFrom = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0]
-        dateTo = today.toISOString().split('T')[0]
-        break
-      case 'custom':
-        dateFrom = customDateFrom
-        dateTo = customDateTo
-        break
-      default:
-        dateFrom = null
-        dateTo = null
-    }
-
-    return { dateFrom, dateTo }
-  }
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
   const convertToBase = (amount, fromCurrency) => {
     if (fromCurrency === baseCurrency) return amount
