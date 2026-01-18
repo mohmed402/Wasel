@@ -1,25 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import OrderFilters from '../../../components/OrderFilters'
 import OrdersTable from '../../../components/OrdersTable'
 import styles from '../orders.module.css'
-import { HiDownload, HiRefresh, HiPlus } from 'react-icons/hi'
+import { HiDownload, HiRefresh, HiPlus, HiTrendingUp, HiTrendingDown } from 'react-icons/hi'
 
 export default function AllOrdersPage() {
   const router = useRouter()
   const [filters, setFilters] = useState({})
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
+  const [totalProfit, setTotalProfit] = useState(0)
 
-  // Fetch orders from database
-  useEffect(() => {
-    fetchOrders()
-  }, [filters])
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams()
@@ -28,6 +24,40 @@ export default function AllOrdersPage() {
       const response = await fetch(`/api/orders?${params.toString()}`)
       if (response.ok) {
         const data = await response.json()
+        
+        // Calculate total profit from all orders
+        let profit = 0
+        data.forEach(order => {
+          // Calculate profit from items
+          if (order.items && order.items.length > 0) {
+            order.items.forEach(item => {
+              const sellingPrice = parseFloat(item.selling_price || item.unit_price || 0)
+              const purchasePrice = parseFloat(item.purchase_price || 0)
+              const quantity = parseFloat(item.quantity || 1)
+              const exchangeRate = parseFloat(item.purchase_exchange_rate || 1.0)
+              
+              // Convert purchase price to base currency (LYD) if needed
+              const purchasePriceInLYD = purchasePrice * exchangeRate
+              
+              // Profit = (selling price - purchase price) * quantity
+              if (purchasePrice > 0) {
+                profit += (sellingPrice - purchasePriceInLYD) * quantity
+              }
+            })
+          }
+          
+          // Subtract expenses
+          if (order.expenses && order.expenses.length > 0) {
+            order.expenses.forEach(expense => {
+              const amount = parseFloat(expense.amount || 0)
+              const exchangeRate = parseFloat(expense.exchange_rate || 1.0)
+              profit -= amount * exchangeRate
+            })
+          }
+        })
+        
+        setTotalProfit(profit)
+        
         // Transform data to match OrdersTable component format
         const transformedOrders = data.map(order => ({
           id: order.internal_ref || order.id,
@@ -51,7 +81,12 @@ export default function AllOrdersPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters])
+
+  // Fetch orders from database
+  useEffect(() => {
+    fetchOrders()
+  }, [fetchOrders])
 
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters)
@@ -131,6 +166,17 @@ export default function AllOrdersPage() {
           <span className={styles.statLabel}>المشاكل:</span>
           <span className={styles.statValue}>
             {orders.filter(o => o.hasIssues).length}
+          </span>
+        </div>
+        <div className={`${styles.stat} ${styles.profitStat}`} style={{ 
+          color: totalProfit >= 0 ? '#16A34A' : '#DC2626',
+          fontWeight: '600',
+          borderRight: `3px solid ${totalProfit >= 0 ? '#16A34A' : '#DC2626'}`
+        }}>
+          <span className={styles.statLabel}>إجمالي الربح:</span>
+          <span className={styles.statValue} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            {totalProfit >= 0 ? <HiTrendingUp /> : <HiTrendingDown />}
+            {totalProfit.toFixed(2)} د.ل
           </span>
         </div>
       </div>

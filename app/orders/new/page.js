@@ -325,19 +325,71 @@ export default function NewOrderPage() {
 
     setIsFetching(true)
     setFetchError('')
+    setWarnings([])
 
     try {
-      // TODO: Replace with actual API call to fetch basket items
-      // Simulated API call
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      const response = await fetch('/api/shein/cart-items', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          cartShareUrl: basketLink.trim()
+        })
+      })
+
+      const responseData = await response.json()
+
+      if (!response.ok || responseData.error) {
+        const errorMessage = responseData.error || `خطأ في الطلب (${response.status})`
+        throw new Error(errorMessage)
+      }
+
+      // Extract items from response
+      const cartItems = responseData.items || []
       
-      // Mock: In real implementation, this would fetch multiple products from basket
-      setWarnings([...warnings, 'تم جلب السلة بنجاح (وضع تجريبي)'])
-      // TODO: Parse basket link and add items to orderItems
+      if (cartItems.length === 0) {
+        setFetchError('لم يتم العثور على أي عناصر في السلة')
+        setWarnings([...warnings, 'لم يتم العثور على أي عناصر في السلة'])
+        return
+      }
+
+      // Convert cart items to order items format
+      const newOrderItems = cartItems.map((item, index) => ({
+        id: Date.now() + index, // Unique ID for each item
+        name: item.name || `منتج ${index + 1}`,
+        productId: item.productId || item.sku || `SHEIN-${Date.now()}-${index}`,
+        variant: item.variant || '',
+        quantity: item.qty || 1,
+        unitPrice: parseFloat(item.price) || 0,
+        sellingPrice: '', // User needs to set selling price later
+        currency: item.currency || 'USD',
+        exchangeRate: 1.0, // User needs to set exchange rate later
+        images: item.images || (item.image ? [item.image] : []),
+        originalLink: basketLink, // Link to the cart
+        weight: '',
+        dimensions: '',
+        availability: 'unknown',
+        locked: false,
+        sku: item.sku || '',
+        source: 'shein_cart'
+      }))
+
+      // Add all items to order items
+      setOrderItems([...orderItems, ...newOrderItems])
+      
+      // Clear warnings and show success
+      setWarnings([])
+      setFetchError('')
+      
+      // Optional: Show success message
+      alert(`تم إضافة ${newOrderItems.length} عنصر من السلة إلى الطلب`)
       
     } catch (error) {
-      setFetchError('فشل في جلب بيانات السلة: ' + error.message)
-      setWarnings([...warnings, `فشل في جلب السلة: ${error.message}`])
+      console.error('Error fetching basket:', error)
+      const errorMessage = error.message || 'حدث خطأ غير متوقع'
+      setFetchError(`فشل في جلب بيانات السلة: ${errorMessage}`)
+      setWarnings([...warnings, `فشل في جلب السلة: ${errorMessage}`])
     } finally {
       setIsFetching(false)
     }

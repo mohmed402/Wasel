@@ -193,9 +193,7 @@ INSERT INTO customer (
   'مصراتة، شارع البحر، قرب الميناء',
   'email',
   TRUE
-);
-
--- Example 5: Inactive customer (soft delete)
+);-- Example 5: Inactive customer (soft delete)
 INSERT INTO customer (
   name,
   phone,
@@ -260,4 +258,3 @@ FROM customer
 WHERE is_active = TRUE
 ORDER BY total_spent DESC
 LIMIT 10;
-

@@ -37,28 +37,20 @@ const supabaseAdmin = supabaseUrl && supabaseServiceKey
       global: {
         fetch: async (url, options = {}) => {
           // Increase timeout for server-side requests
+          // Use a promise-based timeout wrapper
           const timeout = 30000 // 30 seconds
-          const controller = new AbortController()
-          const timeoutId = setTimeout(() => {
-            controller.abort()
-          }, timeout)
           
-          try {
-            const response = await fetch(url, {
-              ...options,
-              signal: controller.signal
+          return Promise.race([
+            fetch(url, options),
+            new Promise((_, reject) => {
+              setTimeout(() => {
+                const timeoutError = new Error(`Request timeout after ${timeout}ms`)
+                timeoutError.code = 'TIMEOUT'
+                timeoutError.name = 'TimeoutError'
+                reject(timeoutError)
+              }, timeout)
             })
-            clearTimeout(timeoutId)
-            return response
-          } catch (error) {
-            clearTimeout(timeoutId)
-            if (error.name === 'AbortError') {
-              const timeoutError = new Error(`Request timeout after ${timeout}ms`)
-              timeoutError.code = 'TIMEOUT'
-              throw timeoutError
-            }
-            throw error
-          }
+          ])
         }
       }
     })
@@ -645,6 +637,20 @@ const orderOperations = {
           phone,
           email,
           address
+        ),
+        items:order_items (
+          id,
+          quantity,
+          unit_price,
+          selling_price,
+          purchase_price,
+          purchase_exchange_rate
+        ),
+        expenses:order_expenses (
+          id,
+          amount,
+          currency,
+          exchange_rate
         )
       `)
       .order('created_at', { ascending: false })
