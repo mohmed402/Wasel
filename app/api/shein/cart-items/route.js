@@ -233,6 +233,22 @@ export async function POST(request) {
       } catch (e) {
         console.log('⚠️ Network idle timeout, continuing...')
       }
+      
+      // Also wait for load state to ensure page is interactive
+      try {
+        await page.waitForLoadState('load', { timeout: 15000 })
+        console.log('✅ Page fully loaded')
+      } catch (e) {
+        console.log('⚠️ Load state timeout, continuing...')
+      }
+      
+      // Wait for DOM to be ready
+      try {
+        await page.waitForLoadState('domcontentloaded', { timeout: 15000 })
+        console.log('✅ DOM content loaded')
+      } catch (e) {
+        console.log('⚠️ DOMContentLoaded timeout, continuing...')
+      }
     } catch (navError) {
       console.error('Navigation error:', navError)
       throw navError
@@ -242,9 +258,11 @@ export async function POST(request) {
     const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
     // Wait a bit more for any delayed API calls and let JavaScript execute
+    console.log('⏳ Waiting for page to fully render...')
     await wait(5000)
     
     // Try scrolling to trigger lazy loading and dynamic content
+    console.log('📜 Scrolling page to trigger lazy loading...')
     await page.evaluate(() => {
       window.scrollTo(0, document.body.scrollHeight / 3)
     })
@@ -258,7 +276,11 @@ export async function POST(request) {
     await page.evaluate(() => {
       window.scrollTo(0, document.body.scrollHeight)
     })
-    await wait(2000)
+    await wait(3000)
+    
+    // One more wait to ensure everything is loaded
+    console.log('⏳ Final wait for page stability...')
+    await wait(3000)
     
     console.log(`📊 Captured ${captured.length} potential responses so far...`)
 
@@ -1056,15 +1078,23 @@ export async function POST(request) {
             })
           } else {
             console.log(`⚠️ DOM extraction returned ${domItems ? domItems.length : 'null'} items`)
+            if (domItems && Array.isArray(domItems)) {
+              console.log(`⚠️ DOM extraction found ${domItems.length} items but none passed validation`)
+              if (domItems.length > 0) {
+                console.log(`⚠️ First item sample:`, JSON.stringify(domItems[0], null, 2).substring(0, 500))
+              }
+            }
           }
         } catch (domError) {
           console.error('❌ DOM extraction failed:', domError.message)
           console.error('❌ DOM extraction stack:', domError.stack)
+          // Continue to final error response instead of throwing
         }
 
       } catch (fallbackError) {
         console.error('❌ Fallback extraction failed:', fallbackError.message)
         console.error('❌ Fallback extraction stack:', fallbackError.stack)
+        // Don't re-throw, continue to final error response
       }
 
       // Log all captured URLs for debugging

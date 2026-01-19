@@ -342,7 +342,20 @@ export default function NewOrderPage() {
       const responseData = await response.json()
 
       if (!response.ok || responseData.error) {
-        const errorMessage = responseData.error || `خطأ في الطلب (${response.status})`
+        // Log detailed error info for debugging
+        console.error('API Error Response:', responseData)
+        console.error('Response Status:', response.status)
+        
+        // Extract more detailed error message if available
+        let errorMessage = responseData.error || `خطأ في الطلب (${response.status})`
+        
+        if (responseData.debug) {
+          console.error('Debug Info:', responseData.debug)
+          if (responseData.debug.capturedCount === 0) {
+            errorMessage = 'لم يتم العثور على عناصر في السلة. قد يكون الرابط غير صحيح أو السلة فارغة.'
+          }
+        }
+        
         throw new Error(errorMessage)
       }
 
