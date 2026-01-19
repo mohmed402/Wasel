@@ -514,6 +514,133 @@ export async function POST(request) {
                 price = price.replace(/[^\d.,]/g, '').replace(/,/g, '')
               }
               
+              // Extract variant information (size and color)
+              let size = null
+              let color = null
+              let variant = null
+              
+              // Try to find the info section with size/color details
+              // Based on the selector: div.bsc-cart-item-share__info > div > div > span
+              const infoSelectors = [
+                '[class*="cart-item-share__info"]',
+                '[class*="cart-item-info"]',
+                '[class*="item-info"]',
+                '[class*="goods-info"]',
+                '[class*="product-info"]',
+                '[class*="bsc-cart-item-share__info"]'
+              ]
+              
+              for (const selector of infoSelectors) {
+                const infoContainer = el.querySelector(selector)
+                if (infoContainer) {
+                  // Look for nested divs and spans (matching the structure: div > div > span)
+                  const nestedSpans = infoContainer.querySelectorAll('div > div > span, div > span, span')
+                  
+                  nestedSpans.forEach(spanEl => {
+                    const text = spanEl.textContent?.trim() || ''
+                    if (!text) return
+                    
+                    // Check for size patterns (XL, L, M, S, 2XL, 3XL, 4XL, etc.)
+                    // Also match Arabic numbers and common size formats
+                    const sizePatterns = [
+                      /\b(\d*[Xx][Ll]|[Xx][Ll]|[Ll]|[Mm]|[Ss])\b/i,  // XL, 2XL, L, M, S
+                      /\b(\d+)\b/,  // Numeric sizes
+                      /(حجم|المقاس)[\s:]*([^\s,]+)/i,  // Arabic "حجم" or "المقاس" followed by size
+                      /(Size|المقاس)[\s:]*([^\s,]+)/i  // English "Size" followed by size
+                    ]
+                    
+                    for (const pattern of sizePatterns) {
+                      const match = text.match(pattern)
+                      if (match && !size) {
+                        size = match[2] || match[1] // Prefer captured group, fallback to full match
+                        break
+                      }
+                    }
+                    
+                    // Check for color patterns (common color names in English and Arabic)
+                    const colorKeywords = [
+                      'black', 'white', 'red', 'blue', 'green', 'yellow', 'pink', 'purple', 
+                      'orange', 'brown', 'gray', 'grey', 'beige', 'navy', 'khaki', 
+                      'champagne', 'apricot', 'cream', 'ivory', 'tan', 'coral', 'mint',
+                      'أسود', 'أبيض', 'أحمر', 'أزرق', 'أخضر', 'أصفر', 'وردي', 'بنفسجي', 
+                      'برتقالي', 'بني', 'رمادي', 'بيج', 'كحلي', 'كريمي', 'عاجي'
+                    ]
+                    
+                    const lowerText = text.toLowerCase()
+                    for (const keyword of colorKeywords) {
+                      if (lowerText.includes(keyword.toLowerCase()) && !color) {
+                        // Extract the full color text (might be "Color: Black" or just "Black")
+                        color = text.replace(/^(color|اللون)[\s:]*/i, '').trim() || keyword
+                        break
+                      }
+                    }
+                  })
+                  
+                  // Also check all text content in the info container for size/color
+                  const allText = infoContainer.textContent || ''
+                  if (allText && (!size || !color)) {
+                    // Try to extract size from text
+                    if (!size) {
+                      const sizeMatch = allText.match(/(\d*[Xx][Ll]|[Xx][Ll]|[Ll]|[Mm]|[Ss]|\d+)/i)
+                      if (sizeMatch) size = sizeMatch[1]
+                    }
+                    
+                    // Try to extract color from text
+                    if (!color) {
+                      const colorMatch = allText.match(/(black|white|red|blue|green|yellow|pink|purple|orange|brown|gray|grey|beige|navy|khaki|champagne|apricot|أسود|أبيض|أحمر|أزرق|أخضر|أصفر|وردي|بنفسجي|برتقالي|بني|رمادي|بيج|كحلي)/i)
+                      if (colorMatch) color = colorMatch[1]
+                    }
+                  }
+                  
+                  // Also check data attributes for size/color
+                  const sizeAttr = infoContainer.getAttribute('data-size') || 
+                                   infoContainer.getAttribute('data-size-value') ||
+                                   infoContainer.closest('[data-size]')?.getAttribute('data-size')
+                  const colorAttr = infoContainer.getAttribute('data-color') || 
+                                   infoContainer.getAttribute('data-color-value') ||
+                                   infoContainer.closest('[data-color]')?.getAttribute('data-color')
+                  
+                  if (sizeAttr) size = sizeAttr
+                  if (colorAttr) color = colorAttr
+                  
+                  break
+                }
+              }
+              
+              // Also check the entire item element and its right section for size/color
+              const rightSection = el.querySelector('[class*="cart-item-share__right"]')
+              if (rightSection && (!size || !color)) {
+                const rightText = rightSection.textContent || ''
+                if (!size) {
+                  const sizeMatch = rightText.match(/\b(\d*[Xx][Ll]|[Xx][Ll]|[Ll]|[Mm]|[Ss]|\d+)\b/i)
+                  if (sizeMatch) size = sizeMatch[1]
+                }
+                if (!color) {
+                  const colorMatch = rightText.match(/(black|white|red|blue|green|yellow|pink|purple|orange|brown|gray|grey|beige|navy|khaki|champagne|apricot|أسود|أبيض|أحمر|أزرق|أخضر|أصفر|وردي|بنفسجي|برتقالي|بني|رمادي|بيج|كحلي)/i)
+                  if (colorMatch) color = colorMatch[1]
+                }
+              }
+              
+              // Also check the entire item element for size/color attributes
+              if (!size) {
+                size = el.getAttribute('data-size') || 
+                       el.getAttribute('data-size-value') ||
+                       el.closest('[data-size]')?.getAttribute('data-size')
+              }
+              if (!color) {
+                color = el.getAttribute('data-color') || 
+                        el.getAttribute('data-color-value') ||
+                        el.closest('[data-color]')?.getAttribute('data-color')
+              }
+              
+              // Build variant string from size and color
+              if (size || color) {
+                const variantParts = []
+                if (color) variantParts.push(color)
+                if (size) variantParts.push(size)
+                variant = variantParts.join(' - ')
+              }
+              
               // Extract ALL images from the item container
               // Strategy: Get all images from the product container, including galleries/carousels
               const images = []
@@ -834,10 +961,17 @@ export async function POST(request) {
               }
               
               // Create a unique key for deduplication
-              // Use product ID if available, otherwise use name+price combination
-              const uniqueKey = goodsId || (name && price ? `${name}_${price}` : null)
+              // Include variant (size/color) in the key so items with different sizes/colors are treated as separate
+              let uniqueKey = null
+              if (goodsId) {
+                // If we have product ID, include variant to differentiate sizes/colors
+                uniqueKey = variant ? `${goodsId}_${variant}` : `${goodsId}_default`
+              } else if (name && price) {
+                // If no product ID, use name+price+variant
+                uniqueKey = variant ? `${name}_${price}_${variant}` : `${name}_${price}`
+              }
               
-              // Skip if we've already seen this item
+              // Skip if we've already seen this exact item (same product ID + variant)
               if (!uniqueKey || seenItems.has(uniqueKey)) {
                 return
               }
@@ -851,12 +985,15 @@ export async function POST(request) {
                   price: price || null,
                   currency: 'USD', // Default, could be extracted from price text
                   qty: 1, // Default quantity
+                  variant: variant || null, // Include size/color variant
                   images: images.length > 0 ? images : null,
                   image: images[0] || null, // Keep first image for backward compatibility
                   raw: { 
                     tagName: el.tagName,
                     className: el.className,
-                    id: el.id
+                    id: el.id,
+                    size: size || null,
+                    color: color || null
                   }
                 })
               }
