@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
 
+// Increase timeout for this route (scraping can take 30-60 seconds)
+export const maxDuration = 60
+
 /**
  * GET /api/shein/cart-items - Health check
  */
@@ -387,8 +390,20 @@ export async function POST(request) {
 
         // Also try to extract from DOM if JavaScript extraction failed
         try {
+          console.log('🔍 Starting DOM extraction...')
+          
+          // Wait for cart items to be visible on the page
+          try {
+            await page.waitForSelector('[class*="cart-be-shared-goods-item"], [class*="cart-goods-item"], [data-goods-id]', { 
+              timeout: 10000 
+            })
+            console.log('✅ Cart items found on page')
+          } catch (selectorError) {
+            console.log('⚠️ Cart items selector not found, continuing anyway...')
+          }
+          
           // Trigger lazy-loaded images before extraction
-          await page.evaluate(() => {
+          const cartItemsCount = await page.evaluate(() => {
             // Scroll each cart item into view to trigger lazy loading
             const cartItems = document.querySelectorAll('[class*="cart-be-shared-goods-item"], [class*="cart-goods-item"], [data-goods-id]')
             cartItems.forEach((item, index) => {
@@ -407,7 +422,9 @@ export async function POST(request) {
                 })
               }
             })
+            return cartItems.length
           })
+          console.log(`📊 Found ${cartItemsCount} cart items in DOM`)
           
           // Wait a moment for images to load
           await wait(2000)
@@ -1010,6 +1027,7 @@ export async function POST(request) {
           })
 
           if (domItems && domItems.length > 0) {
+            console.log(`✅ DOM extraction found ${domItems.length} items`)
             // Normalize the DOM-extracted items to match the expected format
             const normalized = domItems.map(item => ({
               productId: item.productId || null,
@@ -1024,6 +1042,7 @@ export async function POST(request) {
               raw: item.raw || {}
             })).filter(item => item.name || item.productId || item.price) // Filter out completely empty items
             
+            console.log(`✅ Returning ${normalized.length} normalized items from DOM extraction`)
             return NextResponse.json({
               source: 'dom_extraction',
               count: normalized.length,
@@ -1035,13 +1054,17 @@ export async function POST(request) {
                 capturedAt: new Date().toISOString()
               }
             })
+          } else {
+            console.log(`⚠️ DOM extraction returned ${domItems ? domItems.length : 'null'} items`)
           }
         } catch (domError) {
-          console.debug('DOM extraction failed:', domError.message)
+          console.error('❌ DOM extraction failed:', domError.message)
+          console.error('❌ DOM extraction stack:', domError.stack)
         }
 
       } catch (fallbackError) {
-        console.debug('Fallback extraction failed:', fallbackError.message)
+        console.error('❌ Fallback extraction failed:', fallbackError.message)
+        console.error('❌ Fallback extraction stack:', fallbackError.stack)
       }
 
       // Log all captured URLs for debugging
@@ -1051,6 +1074,7 @@ export async function POST(request) {
         hasValidItems: c.items?.length > 0 && (c.items[0]?.goods_id || c.items[0]?.name || c.items[0]?.sale_price)
       })))
 
+      console.error('❌ All extraction methods failed. Returning error response.')
       return NextResponse.json(
         {
           error: 'Could not capture cart items. The endpoint may be protected or payload shape differs.',

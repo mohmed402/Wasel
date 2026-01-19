@@ -47,6 +47,7 @@ export default function NewOrderPage() {
   const [lockFetchedData, setLockFetchedData] = useState(false)
 
   // Manual product state
+  const [showManualForm, setShowManualForm] = useState(false)
   const [manualProduct, setManualProduct] = useState({
     name: '',
     link: '',
@@ -522,6 +523,7 @@ export default function NewOrderPage() {
       exchangeRate: 1.0,
       picture: null
     })
+    setShowManualForm(false)
   }
 
   // Remove item
@@ -1028,7 +1030,7 @@ export default function NewOrderPage() {
       <div className={styles.section}>
         <h2 className={styles.sectionTitle}>إضافة المنتجات</h2>
 
-        {/* A) Add by Product ID */}
+        A) Add by Product ID
         <div className={styles.productBlock}>
           <h3 className={styles.blockTitle}>إضافة عن طريق Product ID (API)</h3>
           <div className={styles.apiForm}>
@@ -1225,175 +1227,199 @@ export default function NewOrderPage() {
 
         {/* B) Manual Product */}
         <div className={styles.productBlock}>
-          <h3 className={styles.blockTitle}>إضافة يدوياً (Manual Product)</h3>
-          <div className={styles.manualForm}>
-            <div className={styles.grid}>
-              <div className={styles.formGroup}>
-                <label>اسم المنتج *</label>
-                <input
-                  type="text"
-                  value={manualProduct.name}
-                  onChange={(e) => setManualProduct({ ...manualProduct, name: e.target.value })}
-                  className={styles.input}
-                  placeholder="اسم المنتج"
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label>رابط المنتج (اختياري)</label>
-                <input
-                  type="url"
-                  value={manualProduct.link}
-                  onChange={(e) => setManualProduct({ ...manualProduct, link: e.target.value })}
-                  className={styles.input}
-                  placeholder="https://..."
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label>SKU / Product ID</label>
-                <input
-                  type="text"
-                  value={manualProduct.sku}
-                  onChange={(e) => setManualProduct({ ...manualProduct, sku: e.target.value })}
-                  className={styles.input}
-                  placeholder="SKU"
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label>اللون</label>
-                <input
-                  type="text"
-                  value={manualProduct.color}
-                  onChange={(e) => setManualProduct({ ...manualProduct, color: e.target.value })}
-                  className={styles.input}
-                  placeholder="اللون"
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label>المقاس</label>
-                <input
-                  type="text"
-                  value={manualProduct.size}
-                  onChange={(e) => setManualProduct({ ...manualProduct, size: e.target.value })}
-                  className={styles.input}
-                  placeholder="المقاس"
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label>الكمية *</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={manualProduct.quantity}
-                  onChange={(e) => setManualProduct({ ...manualProduct, quantity: parseInt(e.target.value) || 1 })}
-                  className={styles.input}
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label>سعر الوحدة (سعر التكلفة) *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={manualProduct.price}
-                  onChange={(e) => setManualProduct({ ...manualProduct, price: e.target.value })}
-                  className={styles.input}
-                  placeholder="0.00"
-                />
-                {manualProduct.price && manualProduct.exchangeRate && manualProduct.currency !== 'LYD' && (
-                  <small style={{ color: '#059669', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem', fontWeight: '500' }}>
-                    السعر بعد التحويل: {(parseFloat(manualProduct.price) * parseFloat(manualProduct.exchangeRate)).toFixed(2)} د.ل
-                  </small>
-                )}
-              </div>
-              <div className={styles.formGroup}>
-                <label>سعر البيع (د.ل) *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={manualProduct.sellingPrice}
-                  onChange={(e) => setManualProduct({ ...manualProduct, sellingPrice: e.target.value })}
-                  className={styles.input}
-                  placeholder="0.00"
-                />
-                <small style={{ color: '#6B7280', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem' }}>
-                  سعر البيع بالدينار الليبي
-                </small>
-                {manualProduct.price && manualProduct.exchangeRate && manualProduct.currency !== 'LYD' && manualProduct.sellingPrice && (
-                  <small style={{ 
-                    color: parseFloat(manualProduct.sellingPrice) >= (parseFloat(manualProduct.price) * parseFloat(manualProduct.exchangeRate)) ? '#059669' : '#DC2626', 
-                    fontSize: '0.85rem', 
-                    display: 'block', 
-                    marginTop: '0.25rem',
-                    fontWeight: '500'
-                  }}>
-                    {parseFloat(manualProduct.sellingPrice) >= (parseFloat(manualProduct.price) * parseFloat(manualProduct.exchangeRate))
-                      ? `✓ الربح: ${(parseFloat(manualProduct.sellingPrice) - (parseFloat(manualProduct.price) * parseFloat(manualProduct.exchangeRate))).toFixed(2)} د.ل`
-                      : `⚠ سعر البيع أقل من سعر التكلفة!`}
-                  </small>
-                )}
-              </div>
-              <div className={styles.formGroup}>
-                <label>العملة *</label>
-                <select
-                  value={manualProduct.currency}
-                  onChange={(e) => {
-                    const newCurrency = e.target.value
-                    setManualProduct({ 
-                      ...manualProduct, 
-                      currency: newCurrency,
-                      exchangeRate: newCurrency === 'LYD' ? 1.0 : manualProduct.exchangeRate
-                    })
-                  }}
-                  className={styles.select}
-                >
-                  <option value="LYD">دينار ليبي (LYD)</option>
-                  <option value="USD">دولار أمريكي (USD)</option>
-                  <option value="EUR">يورو (EUR)</option>
-                  <option value="GBP">جنيه إسترليني (GBP)</option>
-                  <option value="TRY">ليرة تركية (TRY)</option>
-                </select>
-              </div>
-              <div className={styles.formGroup}>
-                <label>سعر الصرف (إلى LYD) *</label>
-                <input
-                  type="number"
-                  step="0.0001"
-                  value={manualProduct.exchangeRate}
-                  onChange={(e) => setManualProduct({ ...manualProduct, exchangeRate: e.target.value })}
-                  className={styles.input}
-                  placeholder="1.0000"
-                  disabled={manualProduct.currency === 'LYD'}
-                />
-                <small style={{ color: '#6B7280', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem' }}>
-                  {manualProduct.currency === 'LYD' 
-                    ? 'العملة الأساسية - لا حاجة لسعر صرف' 
-                    : `1 ${manualProduct.currency} = ${manualProduct.exchangeRate || 1} LYD`}
-                </small>
-                {manualProduct.price && manualProduct.exchangeRate && manualProduct.currency !== 'LYD' && (
-                  <small style={{ color: '#2563EB', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem', fontWeight: '600' }}>
-                    سعر التكلفة بعد التحويل: {(parseFloat(manualProduct.price) * parseFloat(manualProduct.exchangeRate)).toFixed(2)} د.ل
-                  </small>
-                )}
-              </div>
-              <div className={styles.formGroup}>
-                <label>صورة المنتج (اختياري)</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setManualProduct({ ...manualProduct, picture: e.target.files[0] })}
-                  className={styles.fileInput}
-                />
-              </div>
-            </div>
+          {!showManualForm ? (
             <button
-              onClick={handleAddManualProduct}
+              onClick={() => setShowManualForm(true)}
               className={styles.addToOrderButton}
               type="button"
+              style={{ width: '100%' }}
             >
               <HiPlus />
-              إضافة للطلب / Add to Order
+              إضافة منتج يدوياً / Add Item Manually
             </button>
-          </div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 className={styles.blockTitle}>إضافة يدوياً (Manual Product)</h3>
+                <button
+                  onClick={() => setShowManualForm(false)}
+                  className={styles.clearCustomerButton}
+                  type="button"
+                  title="إغلاق / Close"
+                >
+                  <HiX />
+                </button>
+              </div>
+              <div className={styles.manualForm}>
+                <div className={styles.grid}>
+                  <div className={styles.formGroup}>
+                    <label>اسم المنتج *</label>
+                    <input
+                      type="text"
+                      value={manualProduct.name}
+                      onChange={(e) => setManualProduct({ ...manualProduct, name: e.target.value })}
+                      className={styles.input}
+                      placeholder="اسم المنتج"
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>رابط المنتج (اختياري)</label>
+                    <input
+                      type="url"
+                      value={manualProduct.link}
+                      onChange={(e) => setManualProduct({ ...manualProduct, link: e.target.value })}
+                      className={styles.input}
+                      placeholder="https://..."
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>SKU / Product ID</label>
+                    <input
+                      type="text"
+                      value={manualProduct.sku}
+                      onChange={(e) => setManualProduct({ ...manualProduct, sku: e.target.value })}
+                      className={styles.input}
+                      placeholder="SKU"
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>اللون</label>
+                    <input
+                      type="text"
+                      value={manualProduct.color}
+                      onChange={(e) => setManualProduct({ ...manualProduct, color: e.target.value })}
+                      className={styles.input}
+                      placeholder="اللون"
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>المقاس</label>
+                    <input
+                      type="text"
+                      value={manualProduct.size}
+                      onChange={(e) => setManualProduct({ ...manualProduct, size: e.target.value })}
+                      className={styles.input}
+                      placeholder="المقاس"
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>الكمية *</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={manualProduct.quantity}
+                      onChange={(e) => setManualProduct({ ...manualProduct, quantity: parseInt(e.target.value) || 1 })}
+                      className={styles.input}
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>سعر الوحدة (سعر التكلفة) *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={manualProduct.price}
+                      onChange={(e) => setManualProduct({ ...manualProduct, price: e.target.value })}
+                      className={styles.input}
+                      placeholder="0.00"
+                    />
+                    {manualProduct.price && manualProduct.exchangeRate && manualProduct.currency !== 'LYD' && (
+                      <small style={{ color: '#059669', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem', fontWeight: '500' }}>
+                        السعر بعد التحويل: {(parseFloat(manualProduct.price) * parseFloat(manualProduct.exchangeRate)).toFixed(2)} د.ل
+                      </small>
+                    )}
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>سعر البيع (د.ل) *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={manualProduct.sellingPrice}
+                      onChange={(e) => setManualProduct({ ...manualProduct, sellingPrice: e.target.value })}
+                      className={styles.input}
+                      placeholder="0.00"
+                    />
+                    <small style={{ color: '#6B7280', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem' }}>
+                      سعر البيع بالدينار الليبي
+                    </small>
+                    {manualProduct.price && manualProduct.exchangeRate && manualProduct.currency !== 'LYD' && manualProduct.sellingPrice && (
+                      <small style={{ 
+                        color: parseFloat(manualProduct.sellingPrice) >= (parseFloat(manualProduct.price) * parseFloat(manualProduct.exchangeRate)) ? '#059669' : '#DC2626', 
+                        fontSize: '0.85rem', 
+                        display: 'block', 
+                        marginTop: '0.25rem',
+                        fontWeight: '500'
+                      }}>
+                        {parseFloat(manualProduct.sellingPrice) >= (parseFloat(manualProduct.price) * parseFloat(manualProduct.exchangeRate))
+                          ? `✓ الربح: ${(parseFloat(manualProduct.sellingPrice) - (parseFloat(manualProduct.price) * parseFloat(manualProduct.exchangeRate))).toFixed(2)} د.ل`
+                          : `⚠ سعر البيع أقل من سعر التكلفة!`}
+                      </small>
+                    )}
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>العملة *</label>
+                    <select
+                      value={manualProduct.currency}
+                      onChange={(e) => {
+                        const newCurrency = e.target.value
+                        setManualProduct({ 
+                          ...manualProduct, 
+                          currency: newCurrency,
+                          exchangeRate: newCurrency === 'LYD' ? 1.0 : manualProduct.exchangeRate
+                        })
+                      }}
+                      className={styles.select}
+                    >
+                      <option value="LYD">دينار ليبي (LYD)</option>
+                      <option value="USD">دولار أمريكي (USD)</option>
+                      <option value="EUR">يورو (EUR)</option>
+                      <option value="GBP">جنيه إسترليني (GBP)</option>
+                      <option value="TRY">ليرة تركية (TRY)</option>
+                    </select>
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>سعر الصرف (إلى LYD) *</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      value={manualProduct.exchangeRate}
+                      onChange={(e) => setManualProduct({ ...manualProduct, exchangeRate: e.target.value })}
+                      className={styles.input}
+                      placeholder="1.0000"
+                      disabled={manualProduct.currency === 'LYD'}
+                    />
+                    <small style={{ color: '#6B7280', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem' }}>
+                      {manualProduct.currency === 'LYD' 
+                        ? 'العملة الأساسية - لا حاجة لسعر صرف' 
+                        : `1 ${manualProduct.currency} = ${manualProduct.exchangeRate || 1} LYD`}
+                    </small>
+                    {manualProduct.price && manualProduct.exchangeRate && manualProduct.currency !== 'LYD' && (
+                      <small style={{ color: '#2563EB', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem', fontWeight: '600' }}>
+                        سعر التكلفة بعد التحويل: {(parseFloat(manualProduct.price) * parseFloat(manualProduct.exchangeRate)).toFixed(2)} د.ل
+                      </small>
+                    )}
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>صورة المنتج (اختياري)</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setManualProduct({ ...manualProduct, picture: e.target.files[0] })}
+                      className={styles.fileInput}
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={handleAddManualProduct}
+                  className={styles.addToOrderButton}
+                  type="button"
+                >
+                  <HiPlus />
+                  إضافة للطلب / Add to Order
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -1594,7 +1620,7 @@ export default function NewOrderPage() {
       )}
 
       {/* 4. Shipping & Routing */}
-      <div className={styles.section}>
+      {/* <div className={styles.section}>
         <h2 className={styles.sectionTitle}>
           <HiTruck />
           مسار الشحن
@@ -1665,7 +1691,7 @@ export default function NewOrderPage() {
           <div className={styles.stage}>تم التسليم للموصل المحلي</div>
           <div className={styles.stage}>تم التسليم</div>
         </div>
-      </div>
+      </div> */}
 
       {/* 4.5. Expenses */}
       <div className={styles.section}>
