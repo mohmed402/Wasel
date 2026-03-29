@@ -13,6 +13,10 @@
   font-family: var(--font-cairo), 'Cairo', sans-serif;
   direction: rtl;
   color: var(--site-text);
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+  min-width: 0;
 }
 
 .root *,
@@ -96,7 +100,8 @@
   align-items: center;
   gap: 10px;
   text-decoration: none;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
   color: inherit;
 }
 
@@ -505,7 +510,7 @@
 .mobileSearch {
   display: none;
   background: var(--site-surface);
-  padding: 10px 16px;
+  padding: 10px max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
   border-bottom: 1px solid var(--site-border);
   position: relative;
   z-index: 190;
@@ -513,12 +518,14 @@
 
 .mobileSearch input {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   background: var(--site-surface2);
   border: 1px solid var(--site-border);
   border-radius: 10px;
   padding: 10px 16px 10px 44px;
   font-family: var(--font-cairo), 'Cairo', sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   color: var(--site-text);
   outline: none;
   direction: rtl;
@@ -572,14 +579,19 @@
   top: 0;
   right: -100%;
   width: min(320px, 86vw);
+  height: 100vh;
   height: 100dvh;
+  max-height: 100dvh;
   background: var(--site-surface);
   z-index: 500;
   overflow-y: auto;
+  overflow-x: hidden;
   transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
   border-left: 1px solid var(--site-border);
+  padding-top: env(safe-area-inset-top);
+  box-sizing: border-box;
 }
 
 .mobileMenuOpen {
@@ -759,6 +771,7 @@
 
 .mobileMenuFooter {
   padding: 14px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--site-border);
   display: flex;
   gap: 10px;
@@ -835,7 +848,7 @@
 
 @media (max-width: 680px) {
   .topbar {
-    padding: 6px 16px;
+    padding: 6px max(16px, env(safe-area-inset-right)) 6px max(16px, env(safe-area-inset-left));
   }
 
   .topbarLeft a {
@@ -843,8 +856,15 @@
   }
 
   .header {
-    padding: 0 16px;
+    padding: 0 max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left));
     height: 60px;
+    gap: 8px;
+  }
+
+  .logo {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: calc(100% - 108px);
   }
 
   .searchWrap {

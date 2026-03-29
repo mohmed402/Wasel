@@ -56,7 +56,12 @@
   color: #e8e8ea;
 font-family: 'Tajawal' !important; 
   padding: 0;
+  padding-bottom: env(safe-area-inset-bottom);
   direction: rtl;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
 }
 
 /* Buttons/inputs often ignore inherited font — keep Tajawal on all UI text */
@@ -143,12 +148,13 @@ font-family: 'Tajawal' !important;
   display: flex;
   align-items: center;
   line-height: 0;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
 }
 .headerLogoImg {
   height: 38px;
   width: auto;
-  max-width: min(200px, 42vw);
+  max-width: min(200px, 46vw);
   object-fit: contain;
 }
 
@@ -483,6 +489,9 @@ font-family: 'Tajawal' !important;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -1987,10 +1996,10 @@ font-family: 'Tajawal' !important;
 @media (max-width: 768px) {
   /* ── Home: hero ── */
   .landingHero {
-    min-height: min(72vh, 520px);
-    padding: 1.75rem clamp(0.75rem, 4vw, 1.5rem) 1.75rem;
+    min-height: min(64vh, 500px);
+    padding: 1.75rem max(clamp(0.75rem, 4vw, 1.5rem), env(safe-area-inset-right)) 1.75rem max(clamp(0.75rem, 4vw, 1.5rem), env(safe-area-inset-left));
     align-items: flex-start;
-    padding-top: max(1.5rem, env(safe-area-inset-top));
+    padding-top: max(1rem, env(safe-area-inset-top));
   }
   .landingHeroInner {
     max-width: 100%;
@@ -2000,9 +2009,15 @@ font-family: 'Tajawal' !important;
   }
   .landingHeroTitle {
     font-size: clamp(1.05rem, 4.2vw, 1.45rem);
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .heroBrandWordmark {
+    max-width: 100%;
   }
   .heroBrandWordmarkImg {
     max-width: min(100%, 85vw);
+    height: auto;
   }
   .landingHeroSubtitle {
     font-size: 0.88rem;
@@ -2030,6 +2045,8 @@ font-family: 'Tajawal' !important;
   .content {
     padding-top: 1.25rem;
     padding-bottom: 0;
+    padding-right: max(clamp(0.75rem, 4vw, 1.5rem), env(safe-area-inset-right));
+    padding-left: max(clamp(0.75rem, 4vw, 1.5rem), env(safe-area-inset-left));
   }
   .landingBlock {
     margin-bottom: 2.25rem;
@@ -2269,8 +2286,6 @@ font-family: 'Tajawal' !important;
   .aboutLandingVisual { order: -1; max-height: 220px; }
   .aboutLandingCta { width: 100%; justify-content: center; }
   .basketInputRow, .addProductRow { flex-direction: column; }
-  .landingHero { min-height: 340px; padding-top: 2rem; }
-  .landingHeroInner { padding: 1.5rem 1.2rem; }
   .header { flex-direction: column; align-items: stretch; padding: 0.75rem 1rem; height: auto; }
   .trackBlock { max-width: none; }
   .tabPanel { padding: 1.1rem; }
@@ -2315,7 +2330,8 @@ font-family: 'Tajawal' !important;
     height: clamp(22px, 7vw, 32px);
   }
   .content {
-    padding-inline: 0.75rem;
+    padding-right: max(0.75rem, env(safe-area-inset-right));
+    padding-left: max(0.75rem, env(safe-area-inset-left));
   }
   .section {
     border-radius: 14px;
@@ -2370,7 +2386,7 @@ font-family: 'Tajawal' !important;
 
   .landingHero {
     min-height: auto;
-    padding: 1.25rem 0.65rem 1.5rem;
+    padding: 1.25rem max(0.65rem, env(safe-area-inset-right)) 1.5rem max(0.65rem, env(safe-area-inset-left));
   }
   .landingHeroInner {
     padding: 1rem 0.75rem;
