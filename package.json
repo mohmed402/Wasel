@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "shein-scraper": "node shein-scraper-service/server.mjs"
+    "shein-scraper": "node shein-scraper-service/server.mjs",
+    "playwright:install": "node ./node_modules/playwright/cli.js install chromium",
+    "postinstall": "node ./scripts/postinstall-playwright.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
