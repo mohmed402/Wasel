@@ -1,21 +1,22 @@
 import './globals.css'
-import Sidebar from '../components/Sidebar'
+import AppShell from '../components/AppShell'
 
 export const metadata = {
   title: 'واصل - نظام الإدارة',
   description: 'نظام إدارة واصل',
 }
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+}
+
 export default function RootLayout({ children }) {
   return (
     <html lang="ar" dir="rtl">
       <body>
-        <div className="app-container">
-          <Sidebar />
-          <main className="main-content">
-            {children}
-          </main>
-        </div>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   )

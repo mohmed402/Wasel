@@ -49,9 +49,10 @@ export default function AllOrdersPage() {
           // Subtract expenses
           if (order.expenses && order.expenses.length > 0) {
             order.expenses.forEach(expense => {
-              const amount = parseFloat(expense.amount || 0)
-              const exchangeRate = parseFloat(expense.exchange_rate || 1.0)
-              profit -= amount * exchangeRate
+              const cost = parseFloat(expense.cost || 0)
+              // Expenses are already stored in their currency, convert if needed
+              // Since expenses don't have exchange_rate, assume they're in LYD or handle conversion elsewhere
+              profit -= cost
             })
           }
         })

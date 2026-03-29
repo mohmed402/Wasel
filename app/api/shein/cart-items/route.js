@@ -27,14 +27,12 @@ export async function GET() {
  * Scrapes cart items from a Shein cart share URL using Playwright
  */
 export async function POST(request) {
-  console.log('📥 POST /api/shein/cart-items - Request received')
   
   // Lazy load Playwright
   let chromium
   try {
     const playwright = await import('playwright')
     chromium = playwright.chromium
-    console.log('✅ Playwright loaded successfully')
   } catch (e) {
     console.error('❌ Playwright import failed:', e.message)
     return NextResponse.json(
@@ -52,7 +50,6 @@ export async function POST(request) {
     let body
     try {
       body = await request.json()
-      console.log('✅ Request body parsed successfully')
     } catch (jsonError) {
       console.error('❌ JSON parse error:', jsonError.message)
       return NextResponse.json(
@@ -71,7 +68,6 @@ export async function POST(request) {
       )
     }
 
-    console.log('🔗 Cart Share URL:', cartShareUrl)
 
     // Validate URL
     if (!cartShareUrl.includes('shein.com') || !cartShareUrl.includes('cart/share')) {
@@ -82,14 +78,12 @@ export async function POST(request) {
       )
     }
 
-    console.log('🌐 Launching browser...')
     // Launch browser
     try {
       browser = await chromium.launch({ 
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox'] // For server environments
       })
-      console.log('✅ Browser launched successfully')
     } catch (launchError) {
       console.error('❌ Browser launch failed:', launchError.message)
       return NextResponse.json(
@@ -206,7 +200,6 @@ export async function POST(request) {
               timestamp: new Date().toISOString(),
               score: score
             })
-            console.log(`📦 Captured potential cart data from: ${url.substring(0, 100)}... (${items.length} items, score: ${score})`)
           }
         }
       } catch (error) {
@@ -216,8 +209,6 @@ export async function POST(request) {
     })
 
     // Set up response listener BEFORE navigation
-    console.log('🌐 Navigating to cart share URL...')
-    
     try {
       // Navigate to the cart share URL
       await page.goto(cartShareUrl, { 
@@ -225,29 +216,25 @@ export async function POST(request) {
         timeout: 60000 
       })
 
-      console.log('✅ Page loaded, waiting for network activity...')
-
-      // Wait for network to be idle (Playwright uses waitForLoadState with timeout as second param)
+      // Wait for network to be idle
       try {
         await page.waitForLoadState('networkidle', { timeout: 30000 })
       } catch (e) {
-        console.log('⚠️ Network idle timeout, continuing...')
+        // Continue if timeout
       }
       
       // Also wait for load state to ensure page is interactive
       try {
         await page.waitForLoadState('load', { timeout: 15000 })
-        console.log('✅ Page fully loaded')
       } catch (e) {
-        console.log('⚠️ Load state timeout, continuing...')
+        // Continue if timeout
       }
       
       // Wait for DOM to be ready
       try {
         await page.waitForLoadState('domcontentloaded', { timeout: 15000 })
-        console.log('✅ DOM content loaded')
       } catch (e) {
-        console.log('⚠️ DOMContentLoaded timeout, continuing...')
+        // Continue if timeout
       }
     } catch (navError) {
       console.error('Navigation error:', navError)
@@ -258,11 +245,9 @@ export async function POST(request) {
     const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
     // Wait a bit more for any delayed API calls and let JavaScript execute
-    console.log('⏳ Waiting for page to fully render...')
     await wait(5000)
     
     // Try scrolling to trigger lazy loading and dynamic content
-    console.log('📜 Scrolling page to trigger lazy loading...')
     await page.evaluate(() => {
       window.scrollTo(0, document.body.scrollHeight / 3)
     })
@@ -279,10 +264,7 @@ export async function POST(request) {
     await wait(3000)
     
     // One more wait to ensure everything is loaded
-    console.log('⏳ Final wait for page stability...')
     await wait(3000)
-    
-    console.log(`📊 Captured ${captured.length} potential responses so far...`)
 
     // Sort by score (items with proper cart item properties score higher)
     // Then by number of items as tiebreaker
@@ -293,12 +275,9 @@ export async function POST(request) {
     })[0]
 
     if (!best || !best.items || best.items.length === 0) {
-      console.log('🔍 No valid items from network interception, trying page content extraction...')
-      
       // Try to extract from page content as fallback - this is often more reliable
       try {
         const pageContent = await page.content()
-        console.log(`📄 Page content length: ${pageContent.length} chars`)
         
         // Try to evaluate JavaScript variables that might contain cart data
         const jsCartData = await page.evaluate(() => {
@@ -327,9 +306,7 @@ export async function POST(request) {
           return data
         }).catch(() => null)
         
-        if (jsCartData && Object.keys(jsCartData).length > 0) {
-          console.log('✅ Found JavaScript variables:', Object.keys(jsCartData))
-        }
+        // JavaScript variables checked, continue...
         
         // Try multiple patterns for cart data in page content
         const patterns = [
@@ -412,16 +389,19 @@ export async function POST(request) {
 
         // Also try to extract from DOM if JavaScript extraction failed
         try {
-          console.log('🔍 Starting DOM extraction...')
-          
           // Wait for cart items to be visible on the page
+          let cartItemsVisible = false
           try {
             await page.waitForSelector('[class*="cart-be-shared-goods-item"], [class*="cart-goods-item"], [data-goods-id]', { 
-              timeout: 10000 
+              timeout: 15000 
             })
-            console.log('✅ Cart items found on page')
+            cartItemsVisible = true
           } catch (selectorError) {
-            console.log('⚠️ Cart items selector not found, continuing anyway...')
+            // Check if items exist anyway
+            const itemCount = await page.evaluate(() => {
+              return document.querySelectorAll('[class*="cart-be-shared-goods-item"], [class*="cart-goods-item"], [data-goods-id]').length
+            })
+            cartItemsVisible = itemCount > 0
           }
           
           // Trigger lazy-loaded images before extraction
@@ -446,7 +426,12 @@ export async function POST(request) {
             })
             return cartItems.length
           })
-          console.log(`📊 Found ${cartItemsCount} cart items in DOM`)
+          
+          if (cartItemsCount === 0) {
+            console.error('❌ No cart items found on page after waiting')
+          } else {
+            console.log(`✅ Found ${cartItemsCount} cart items on page, proceeding with extraction`)
+          }
           
           // Wait a moment for images to load
           await wait(2000)
@@ -1044,12 +1029,13 @@ export async function POST(request) {
               return []
             }
           }).catch(err => {
-            console.error('page.evaluate failed:', err)
+            console.error('❌ page.evaluate failed:', err)
+            console.error('❌ page.evaluate error stack:', err.stack)
             return []
           })
 
+          console.log(`📊 DOM extraction result: ${domItems ? domItems.length : 'null'} items found`)
           if (domItems && domItems.length > 0) {
-            console.log(`✅ DOM extraction found ${domItems.length} items`)
             // Normalize the DOM-extracted items to match the expected format
             const normalized = domItems.map(item => ({
               productId: item.productId || null,
@@ -1064,7 +1050,9 @@ export async function POST(request) {
               raw: item.raw || {}
             })).filter(item => item.name || item.productId || item.price) // Filter out completely empty items
             
-            console.log(`✅ Returning ${normalized.length} normalized items from DOM extraction`)
+            // Log success for debugging
+            console.log(`✅ DOM extraction successful: found ${normalized.length} items`)
+            
             return NextResponse.json({
               source: 'dom_extraction',
               count: normalized.length,
@@ -1077,13 +1065,7 @@ export async function POST(request) {
               }
             })
           } else {
-            console.log(`⚠️ DOM extraction returned ${domItems ? domItems.length : 'null'} items`)
-            if (domItems && Array.isArray(domItems)) {
-              console.log(`⚠️ DOM extraction found ${domItems.length} items but none passed validation`)
-              if (domItems.length > 0) {
-                console.log(`⚠️ First item sample:`, JSON.stringify(domItems[0], null, 2).substring(0, 500))
-              }
-            }
+            console.error(`❌ DOM extraction returned empty: domItems = ${domItems ? domItems.length : 'null'}`)
           }
         } catch (domError) {
           console.error('❌ DOM extraction failed:', domError.message)
@@ -1097,14 +1079,7 @@ export async function POST(request) {
         // Don't re-throw, continue to final error response
       }
 
-      // Log all captured URLs for debugging
-      console.log('🔍 Debug: All captured responses:', captured.map(c => ({
-        url: c.url.substring(0, 150),
-        itemCount: c.items?.length || 0,
-        hasValidItems: c.items?.length > 0 && (c.items[0]?.goods_id || c.items[0]?.name || c.items[0]?.sale_price)
-      })))
-
-      console.error('❌ All extraction methods failed. Returning error response.')
+      // All extraction methods failed
       return NextResponse.json(
         {
           error: 'Could not capture cart items. The endpoint may be protected or payload shape differs.',

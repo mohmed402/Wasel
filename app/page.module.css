@@ -142,5 +142,27 @@
   .content {
     padding: 1.5rem;
   }
+
+  .statCard {
+    padding: 1.15rem;
+  }
+
+  .sectionTitle {
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard {
+    padding-inline: 0;
+  }
+
+  .title {
+    font-size: 1.3rem;
+  }
+
+  .content {
+    padding: 1rem;
+  }
 }
 

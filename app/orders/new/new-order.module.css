@@ -244,6 +244,65 @@
   flex-shrink: 0;
 }
 
+/* Customer Statistics */
+.customerStatsCard {
+  margin-top: 0.75rem;
+  padding: 1rem;
+  background: #F0F9FF;
+  border: 1px solid #BAE6FD;
+  border-radius: var(--border-radius);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.customerStatsRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.customerStatsLabel {
+  font-size: 0.9rem;
+  color: #6B7280;
+  font-weight: 500;
+}
+
+.customerStatsValue {
+  font-size: 1rem;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+/* Customer Warning Flag */
+.customerWarningFlag {
+  margin-top: 0.75rem;
+  padding: 1rem;
+  background: #FEF2F2;
+  border: 2px solid #FCA5A5;
+  border-radius: var(--border-radius);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  color: #DC2626;
+}
+
+.customerWarningFlag svg {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.customerWarningFlag div {
+  flex: 1;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.customerWarningFlag strong {
+  font-weight: 700;
+}
+
 .addCustomerButton {
   display: flex;
   align-items: center;
@@ -734,6 +793,7 @@
 
 .grandTotal {
   font-size: 1.25rem !important;
+  color: #86EFAC !important;
 }
 
 /* Shipping Stages */
@@ -1016,6 +1076,23 @@
 }
 
 @media (max-width: 768px) {
+  .newOrderPage {
+    padding-inline: 0;
+  }
+
+  .pageTitle {
+    font-size: 1.35rem;
+    flex-wrap: wrap;
+  }
+
+  .section {
+    padding: 1.25rem;
+  }
+
+  .sectionTitle {
+    font-size: 1.2rem;
+  }
+
   .grid {
     grid-template-columns: 1fr;
   }
@@ -1145,4 +1222,96 @@
   .expensesGrid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Small Button */
+.smallButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--primary);
+  border: none;
+  border-radius: var(--border-radius);
+  color: white;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.smallButton:hover {
+  background: var(--accent);
+}
+
+/* Modal Overlay */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+/* Modal */
+.modal {
+  background: white;
+  border-radius: var(--border-radius);
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  position: relative;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #E5E7EB;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
+}
+
+.modalTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.modalCloseButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  background: transparent;
+  border: 1px solid #DC2626;
+  border-radius: var(--border-radius);
+  color: #DC2626;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.modalCloseButton:hover {
+  background: #DC2626;
+  color: white;
+}
+
+.modalContent {
+  padding: 1.5rem;
 }

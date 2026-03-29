@@ -116,6 +116,8 @@ export default function NewOrderPage() {
   const [searchedCustomer, setSearchedCustomer] = useState(null)
   const [searchingCustomer, setSearchingCustomer] = useState(false)
   const [customerNotFound, setCustomerNotFound] = useState(false)
+  const [customerStats, setCustomerStats] = useState(null)
+  const [loadingCustomerStats, setLoadingCustomerStats] = useState(false)
 
   // Fetch customers on mount
   useEffect(() => {
@@ -200,6 +202,7 @@ export default function NewOrderPage() {
             setSearchedCustomer(null)
             setCustomerId('')
             setCustomerNotFound(true)
+            setCustomerStats(null)
           }
         } catch (error) {
           console.error('Error searching customer:', error)
@@ -222,6 +225,34 @@ export default function NewOrderPage() {
 
     return () => clearTimeout(timeoutId)
   }, [customerPhoneSearch, customers])
+
+  // Fetch customer statistics when customer is selected
+  useEffect(() => {
+    const fetchCustomerStats = async () => {
+      if (!customerId) {
+        setCustomerStats(null)
+        return
+      }
+
+      setLoadingCustomerStats(true)
+      try {
+        const response = await fetch(`/api/customers/${customerId}/stats`)
+        if (response.ok) {
+          const stats = await response.json()
+          setCustomerStats(stats)
+        } else {
+          setCustomerStats({ totalOrders: 0, totalAmountPaid: 0 })
+        }
+      } catch (error) {
+        console.error('Error fetching customer stats:', error)
+        setCustomerStats({ totalOrders: 0, totalAmountPaid: 0 })
+      } finally {
+        setLoadingCustomerStats(false)
+      }
+    }
+
+    fetchCustomerStats()
+  }, [customerId])
 
   // Handle customer phone input change
   const handleCustomerPhoneChange = (e) => {
@@ -329,14 +360,30 @@ export default function NewOrderPage() {
     setWarnings([])
 
     try {
+      // Add currency=USD parameter to the URL if not already present
+      let processedUrl = basketLink.trim()
+      try {
+        const url = new URL(processedUrl)
+        // Only add currency if it's a Shein cart URL and currency is not already set
+        if (url.hostname.includes('shein.com') && !url.searchParams.has('currency')) {
+          url.searchParams.set('currency', 'USD')
+          processedUrl = url.toString()
+        }
+      } catch (urlError) {
+        // If URL parsing fails, use original URL
+        console.error('Error parsing URL:', urlError)
+      }
+
       const response = await fetch('/api/shein/cart-items', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          cartShareUrl: basketLink.trim()
-        })
+          cartShareUrl: processedUrl
+        }),
+        // Add signal for timeout (70 seconds - should be enough)
+        signal: AbortSignal.timeout(70000)
       })
 
       const responseData = await response.json()
@@ -909,6 +956,7 @@ export default function NewOrderPage() {
               </div>
               
               {searchedCustomer && (
+                <>
                 <div className={styles.customerFoundCard}>
                   <div className={styles.customerFoundInfo}>
                     <div className={styles.customerFoundName}>{searchedCustomer.name}</div>
@@ -923,13 +971,50 @@ export default function NewOrderPage() {
                       setCustomerPhoneSearch('')
                       setSearchedCustomer(null)
                       setCustomerId('')
+                        setCustomerStats(null)
                     }}
                     className={styles.clearCustomerButton}
                     title="إزالة"
                   >
                     <HiX />
                   </button>
+                  </div>
+                  
+                  {/* Customer Statistics */}
+                  {loadingCustomerStats ? (
+                    <div style={{ padding: '0.75rem', color: '#6B7280', fontSize: '0.9rem' }}>
+                      جاري تحميل إحصائيات العميل...
+                    </div>
+                  ) : customerStats !== null && (
+                    <div className={styles.customerStatsCard}>
+                      <div className={styles.customerStatsRow}>
+                        <span className={styles.customerStatsLabel}>إجمالي الطلبات:</span>
+                        <span className={styles.customerStatsValue}>{customerStats.totalOrders}</span>
+                      </div>
+                      <div className={styles.customerStatsRow}>
+                        <span className={styles.customerStatsLabel}>إجمالي المبلغ المدفوع:</span>
+                        <span className={styles.customerStatsValue}>{customerStats.totalAmountPaid} د.ل</span>
+                      </div>
                 </div>
+                  )}
+
+                  {/* Warning Flag for New Customers with High Order Value */}
+                  {customerStats !== null && customerStats.totalOrders === 0 && (() => {
+                    const totals = calculateTotals()
+                    const currentOrderTotal = Math.round(totals.total)
+                    if (currentOrderTotal > 500) {
+                      return (
+                        <div className={styles.customerWarningFlag}>
+                          <HiExclamation />
+                          <div>
+                            <strong>تحذير:</strong> هذا عميل جديد و قيمة الطلب ({currentOrderTotal} د.ل) أكثر من 500 دينار. يُنصح بطلب دفعة مقدمة.
+                          </div>
+                        </div>
+                      )
+                    }
+                    return null
+                  })()}
+                </>
               )}
               
               {customerNotFound && customerPhoneSearch.length === 10 && !searchingCustomer && (
@@ -1016,7 +1101,7 @@ export default function NewOrderPage() {
           </div>
 
           <div className={styles.formGroup}>
-            <label>نافذة التسليم المتوقعة (اختياري)</label>
+            <label>تاريخ التسليم المتوقع (اختياري)</label>
             <input
               type="text"
               value={expectedDelivery}
@@ -1043,398 +1128,205 @@ export default function NewOrderPage() {
       <div className={styles.section}>
         <h2 className={styles.sectionTitle}>إضافة المنتجات</h2>
 
-        A) Add by Product ID
-        <div className={styles.productBlock}>
-          <h3 className={styles.blockTitle}>إضافة عن طريق Product ID (API)</h3>
-          <div className={styles.apiForm}>
-            <div className={styles.formGroup}>
-              <label>Product ID</label>
-              <input
-                type="text"
-                value={productId}
-                onChange={(e) => setProductId(e.target.value)}
-                className={styles.input}
-                placeholder="أدخل Product ID"
-              />
-            </div>
-            <div className={styles.formGroup}>
-              <label>Variant (اختياري)</label>
-              <select
-                value={variant}
-                onChange={(e) => setVariant(e.target.value)}
-                className={styles.select}
-                disabled={!fetchedProduct}
-              >
-                <option value="">اختر Variant</option>
-                {fetchedProduct?.variants?.map(v => (
-                  <option key={v.id} value={v.id}>
-                    {v.size} - {v.color} {!v.available && '(غير متوفر)'}
-                  </option>
-                ))}
-              </select>
-            </div>
+        {/* Manual Product Button */}
             <button
-              onClick={handleFetchProduct}
-              disabled={isFetching}
-              className={styles.fetchButton}
+          onClick={() => setShowManualForm(true)}
+          className={styles.smallButton}
               type="button"
             >
-              {isFetching ? 'جاري الجلب...' : 'جلب بيانات المنتج / Get Product Data'}
+          <HiPlus />
+          إضافة منتج يدوياً / Add Item Manually
             </button>
-            {fetchError && (
-              <div className={styles.errorMessage}>
-                <HiXCircle /> {fetchError}
               </div>
-            )}
-            {fetchedProduct && (
-              <div className={styles.productPreview}>
-                <div className={styles.previewHeader}>
-                  <h4>معاينة المنتج</h4>
-                  <button
-                    onClick={() => setLockFetchedData(!lockFetchedData)}
-                    className={styles.lockButton}
-                    type="button"
-                  >
-                    {lockFetchedData ? (
-                      <>
-                        <HiLockClosed /> بيانات مقفولة
-                      </>
-                    ) : (
-                      <>
-                        <HiLockOpen /> قابل للتعديل
-                      </>
-                    )}
-                  </button>
-                </div>
-                <div className={styles.previewContent}>
-                  <div className={styles.previewImage}>
-                    {fetchedProduct.images?.[0] && (
-                      <img src={fetchedProduct.images[0]} alt={fetchedProduct.name} />
-                    )}
-                  </div>
-                  <div className={styles.previewDetails}>
-                    <h5>{fetchedProduct.name}</h5>
-                    <div className={styles.previewRow}>
-                      <span>السعر:</span>
-                      <strong>{fetchedProduct.price} {fetchedProduct.currency}</strong>
-                    </div>
-                    {fetchedProduct.variants && (
-                      <div className={styles.previewRow}>
-                        <span>المقاسات/الألوان:</span>
-                        <div className={styles.variantsList}>
-                          {fetchedProduct.variants.map(v => (
-                            <span key={v.id} className={v.available ? styles.variantAvailable : styles.variantUnavailable}>
-                              {v.size} - {v.color}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {fetchedProduct.weight && (
-                      <div className={styles.previewRow}>
-                        <span>الوزن:</span>
-                        <span>{fetchedProduct.weight}</span>
-                      </div>
-                    )}
-                    {fetchedProduct.dimensions && (
-                      <div className={styles.previewRow}>
-                        <span>الأبعاد:</span>
-                        <span>{fetchedProduct.dimensions}</span>
-                      </div>
-                    )}
-                    <div className={styles.previewRow}>
-                      <span>الحالة:</span>
-                      <span className={fetchedProduct.inStock ? styles.inStock : styles.outOfStock}>
-                        {fetchedProduct.inStock ? 'متوفر' : 'غير متوفر'}
-                      </span>
-                    </div>
-                    <div className={styles.previewRow}>
-                      <span>العملة:</span>
-                      <select
-                        value={fetchedProduct.currency || 'LYD'}
-                        onChange={(e) => {
-                          const newCurrency = e.target.value
-                          setFetchedProduct({ 
-                            ...fetchedProduct, 
-                            currency: newCurrency
-                          })
-                          setFetchedProductExchangeRate(newCurrency === 'LYD' ? 1.0 : fetchedProductExchangeRate)
-                        }}
-                        className={styles.select}
-                        disabled={lockFetchedData}
-                        style={{ width: 'auto', minWidth: '150px' }}
-                      >
-                        <option value="LYD">دينار ليبي (LYD)</option>
-                        <option value="USD">دولار أمريكي (USD)</option>
-                        <option value="EUR">يورو (EUR)</option>
-                        <option value="GBP">جنيه إسترليني (GBP)</option>
-                        <option value="TRY">ليرة تركية (TRY)</option>
-                      </select>
-                    </div>
-                    <div className={styles.previewRow}>
-                      <span>سعر الصرف (إلى LYD):</span>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <input
-                          type="number"
-                          step="0.0001"
-                          value={fetchedProductExchangeRate}
-                          onChange={(e) => setFetchedProductExchangeRate(parseFloat(e.target.value) || 1.0)}
-                          className={styles.input}
-                          placeholder="1.0000"
-                          disabled={lockFetchedData || (fetchedProduct.currency || 'LYD') === 'LYD'}
-                          style={{ width: '150px' }}
-                        />
-                        <small style={{ color: '#6B7280', fontSize: '0.85rem' }}>
-                          {(fetchedProduct.currency || 'LYD') === 'LYD' 
-                            ? 'العملة الأساسية - لا حاجة لسعر صرف' 
-                            : `1 ${fetchedProduct.currency || 'LYD'} = ${fetchedProductExchangeRate} LYD`}
-                        </small>
-                      </div>
-                    </div>
-                    <div className={styles.previewRow}>
-                      <span>الرابط الأصلي:</span>
-                      <a href={fetchedProduct.originalLink} target="_blank" rel="noopener noreferrer">
-                        <HiLink /> عرض
-                      </a>
-                    </div>
-                  </div>
-                </div>
-                <div className={styles.previewActions}>
-                  <div className={styles.previewActionGroup}>
-                    <label>الكمية:</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={fetchedProductQuantity}
-                    onChange={(e) => setFetchedProductQuantity(parseInt(e.target.value) || 1)}
-                    className={styles.quantityInput}
-                    placeholder="الكمية"
-                  />
-                  </div>
-                  <div className={styles.previewActionGroup}>
-                    <label>سعر البيع (د.ل) *:</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={fetchedProductSellingPrice}
-                      onChange={(e) => setFetchedProductSellingPrice(e.target.value)}
-                      className={styles.quantityInput}
-                      placeholder="سعر البيع"
-                    />
-                  </div>
-                  <button
-                    onClick={handleAddFetchedProduct}
-                    className={styles.addToOrderButton}
-                    type="button"
-                    disabled={!fetchedProductSellingPrice}
-                  >
-                    <HiPlus />
-                    إضافة للطلب / Add to Order
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
 
-        {/* B) Manual Product */}
-        <div className={styles.productBlock}>
-          {!showManualForm ? (
+      {/* Manual Product Modal */}
+      {showManualForm && (
+        <div className={styles.modalOverlay} onClick={() => setShowManualForm(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.modalTitle}>إضافة يدوياً (Manual Product)</h3>
+                  <button
+                onClick={() => setShowManualForm(false)}
+                className={styles.modalCloseButton}
+                    type="button"
+                title="إغلاق / Close"
+              >
+                <HiX />
+                  </button>
+                </div>
+            <div className={styles.modalContent}>
+          <div className={styles.manualForm}>
+            <div className={styles.grid}>
+              <div className={styles.formGroup}>
+                <label>اسم المنتج *</label>
+                <input
+                  type="text"
+                  value={manualProduct.name}
+                  onChange={(e) => setManualProduct({ ...manualProduct, name: e.target.value })}
+                  className={styles.input}
+                  placeholder="اسم المنتج"
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label>رابط المنتج (اختياري)</label>
+                <input
+                  type="url"
+                  value={manualProduct.link}
+                  onChange={(e) => setManualProduct({ ...manualProduct, link: e.target.value })}
+                  className={styles.input}
+                  placeholder="https://..."
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label>SKU / Product ID</label>
+                <input
+                  type="text"
+                  value={manualProduct.sku}
+                  onChange={(e) => setManualProduct({ ...manualProduct, sku: e.target.value })}
+                  className={styles.input}
+                  placeholder="SKU"
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label>اللون</label>
+                <input
+                  type="text"
+                  value={manualProduct.color}
+                  onChange={(e) => setManualProduct({ ...manualProduct, color: e.target.value })}
+                  className={styles.input}
+                  placeholder="اللون"
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label>المقاس</label>
+                <input
+                  type="text"
+                  value={manualProduct.size}
+                  onChange={(e) => setManualProduct({ ...manualProduct, size: e.target.value })}
+                  className={styles.input}
+                  placeholder="المقاس"
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label>الكمية *</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={manualProduct.quantity}
+                  onChange={(e) => setManualProduct({ ...manualProduct, quantity: parseInt(e.target.value) || 1 })}
+                  className={styles.input}
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label>سعر الوحدة (سعر التكلفة) *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={manualProduct.price}
+                  onChange={(e) => setManualProduct({ ...manualProduct, price: e.target.value })}
+                  className={styles.input}
+                  placeholder="0.00"
+                />
+                {manualProduct.price && manualProduct.exchangeRate && manualProduct.currency !== 'LYD' && (
+                  <small style={{ color: '#059669', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem', fontWeight: '500' }}>
+                    السعر بعد التحويل: {(parseFloat(manualProduct.price) * parseFloat(manualProduct.exchangeRate)).toFixed(2)} د.ل
+                  </small>
+                )}
+              </div>
+              <div className={styles.formGroup}>
+                <label>سعر البيع (د.ل) *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={manualProduct.sellingPrice}
+                  onChange={(e) => setManualProduct({ ...manualProduct, sellingPrice: e.target.value })}
+                  className={styles.input}
+                  placeholder="0.00"
+                />
+                <small style={{ color: '#6B7280', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem' }}>
+                  سعر البيع بالدينار الليبي
+                </small>
+                {manualProduct.price && manualProduct.exchangeRate && manualProduct.currency !== 'LYD' && manualProduct.sellingPrice && (
+                  <small style={{ 
+                    color: parseFloat(manualProduct.sellingPrice) >= (parseFloat(manualProduct.price) * parseFloat(manualProduct.exchangeRate)) ? '#059669' : '#DC2626', 
+                    fontSize: '0.85rem', 
+                    display: 'block', 
+                    marginTop: '0.25rem',
+                    fontWeight: '500'
+                  }}>
+                    {parseFloat(manualProduct.sellingPrice) >= (parseFloat(manualProduct.price) * parseFloat(manualProduct.exchangeRate))
+                      ? `✓ الربح: ${(parseFloat(manualProduct.sellingPrice) - (parseFloat(manualProduct.price) * parseFloat(manualProduct.exchangeRate))).toFixed(2)} د.ل`
+                      : `⚠ سعر البيع أقل من سعر التكلفة!`}
+                  </small>
+                )}
+              </div>
+              <div className={styles.formGroup}>
+                <label>العملة *</label>
+                <select
+                  value={manualProduct.currency}
+                  onChange={(e) => {
+                    const newCurrency = e.target.value
+                    setManualProduct({ 
+                      ...manualProduct, 
+                      currency: newCurrency,
+                      exchangeRate: newCurrency === 'LYD' ? 1.0 : manualProduct.exchangeRate
+                    })
+                  }}
+                  className={styles.select}
+                >
+                  <option value="LYD">دينار ليبي (LYD)</option>
+                  <option value="USD">دولار أمريكي (USD)</option>
+                  <option value="EUR">يورو (EUR)</option>
+                  <option value="GBP">جنيه إسترليني (GBP)</option>
+                  <option value="TRY">ليرة تركية (TRY)</option>
+                </select>
+              </div>
+              <div className={styles.formGroup}>
+                <label>سعر الصرف (إلى LYD) *</label>
+                <input
+                  type="number"
+                  step="0.0001"
+                  value={manualProduct.exchangeRate}
+                  onChange={(e) => setManualProduct({ ...manualProduct, exchangeRate: e.target.value })}
+                  className={styles.input}
+                  placeholder="1.0000"
+                  disabled={manualProduct.currency === 'LYD'}
+                />
+                <small style={{ color: '#6B7280', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem' }}>
+                  {manualProduct.currency === 'LYD' 
+                    ? 'العملة الأساسية - لا حاجة لسعر صرف' 
+                    : `1 ${manualProduct.currency} = ${manualProduct.exchangeRate || 1} LYD`}
+                </small>
+                {manualProduct.price && manualProduct.exchangeRate && manualProduct.currency !== 'LYD' && (
+                  <small style={{ color: '#2563EB', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem', fontWeight: '600' }}>
+                    سعر التكلفة بعد التحويل: {(parseFloat(manualProduct.price) * parseFloat(manualProduct.exchangeRate)).toFixed(2)} د.ل
+                  </small>
+                )}
+              </div>
+              <div className={styles.formGroup}>
+                <label>صورة المنتج (اختياري)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setManualProduct({ ...manualProduct, picture: e.target.files[0] })}
+                  className={styles.fileInput}
+                />
+              </div>
+            </div>
             <button
-              onClick={() => setShowManualForm(true)}
+              onClick={handleAddManualProduct}
               className={styles.addToOrderButton}
               type="button"
-              style={{ width: '100%' }}
             >
               <HiPlus />
-              إضافة منتج يدوياً / Add Item Manually
+              إضافة للطلب / Add to Order
             </button>
-          ) : (
-            <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 className={styles.blockTitle}>إضافة يدوياً (Manual Product)</h3>
-                <button
-                  onClick={() => setShowManualForm(false)}
-                  className={styles.clearCustomerButton}
-                  type="button"
-                  title="إغلاق / Close"
-                >
-                  <HiX />
-                </button>
-              </div>
-              <div className={styles.manualForm}>
-                <div className={styles.grid}>
-                  <div className={styles.formGroup}>
-                    <label>اسم المنتج *</label>
-                    <input
-                      type="text"
-                      value={manualProduct.name}
-                      onChange={(e) => setManualProduct({ ...manualProduct, name: e.target.value })}
-                      className={styles.input}
-                      placeholder="اسم المنتج"
-                    />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>رابط المنتج (اختياري)</label>
-                    <input
-                      type="url"
-                      value={manualProduct.link}
-                      onChange={(e) => setManualProduct({ ...manualProduct, link: e.target.value })}
-                      className={styles.input}
-                      placeholder="https://..."
-                    />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>SKU / Product ID</label>
-                    <input
-                      type="text"
-                      value={manualProduct.sku}
-                      onChange={(e) => setManualProduct({ ...manualProduct, sku: e.target.value })}
-                      className={styles.input}
-                      placeholder="SKU"
-                    />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>اللون</label>
-                    <input
-                      type="text"
-                      value={manualProduct.color}
-                      onChange={(e) => setManualProduct({ ...manualProduct, color: e.target.value })}
-                      className={styles.input}
-                      placeholder="اللون"
-                    />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>المقاس</label>
-                    <input
-                      type="text"
-                      value={manualProduct.size}
-                      onChange={(e) => setManualProduct({ ...manualProduct, size: e.target.value })}
-                      className={styles.input}
-                      placeholder="المقاس"
-                    />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>الكمية *</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={manualProduct.quantity}
-                      onChange={(e) => setManualProduct({ ...manualProduct, quantity: parseInt(e.target.value) || 1 })}
-                      className={styles.input}
-                    />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>سعر الوحدة (سعر التكلفة) *</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={manualProduct.price}
-                      onChange={(e) => setManualProduct({ ...manualProduct, price: e.target.value })}
-                      className={styles.input}
-                      placeholder="0.00"
-                    />
-                    {manualProduct.price && manualProduct.exchangeRate && manualProduct.currency !== 'LYD' && (
-                      <small style={{ color: '#059669', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem', fontWeight: '500' }}>
-                        السعر بعد التحويل: {(parseFloat(manualProduct.price) * parseFloat(manualProduct.exchangeRate)).toFixed(2)} د.ل
-                      </small>
-                    )}
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>سعر البيع (د.ل) *</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={manualProduct.sellingPrice}
-                      onChange={(e) => setManualProduct({ ...manualProduct, sellingPrice: e.target.value })}
-                      className={styles.input}
-                      placeholder="0.00"
-                    />
-                    <small style={{ color: '#6B7280', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem' }}>
-                      سعر البيع بالدينار الليبي
-                    </small>
-                    {manualProduct.price && manualProduct.exchangeRate && manualProduct.currency !== 'LYD' && manualProduct.sellingPrice && (
-                      <small style={{ 
-                        color: parseFloat(manualProduct.sellingPrice) >= (parseFloat(manualProduct.price) * parseFloat(manualProduct.exchangeRate)) ? '#059669' : '#DC2626', 
-                        fontSize: '0.85rem', 
-                        display: 'block', 
-                        marginTop: '0.25rem',
-                        fontWeight: '500'
-                      }}>
-                        {parseFloat(manualProduct.sellingPrice) >= (parseFloat(manualProduct.price) * parseFloat(manualProduct.exchangeRate))
-                          ? `✓ الربح: ${(parseFloat(manualProduct.sellingPrice) - (parseFloat(manualProduct.price) * parseFloat(manualProduct.exchangeRate))).toFixed(2)} د.ل`
-                          : `⚠ سعر البيع أقل من سعر التكلفة!`}
-                      </small>
-                    )}
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>العملة *</label>
-                    <select
-                      value={manualProduct.currency}
-                      onChange={(e) => {
-                        const newCurrency = e.target.value
-                        setManualProduct({ 
-                          ...manualProduct, 
-                          currency: newCurrency,
-                          exchangeRate: newCurrency === 'LYD' ? 1.0 : manualProduct.exchangeRate
-                        })
-                      }}
-                      className={styles.select}
-                    >
-                      <option value="LYD">دينار ليبي (LYD)</option>
-                      <option value="USD">دولار أمريكي (USD)</option>
-                      <option value="EUR">يورو (EUR)</option>
-                      <option value="GBP">جنيه إسترليني (GBP)</option>
-                      <option value="TRY">ليرة تركية (TRY)</option>
-                    </select>
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>سعر الصرف (إلى LYD) *</label>
-                    <input
-                      type="number"
-                      step="0.0001"
-                      value={manualProduct.exchangeRate}
-                      onChange={(e) => setManualProduct({ ...manualProduct, exchangeRate: e.target.value })}
-                      className={styles.input}
-                      placeholder="1.0000"
-                      disabled={manualProduct.currency === 'LYD'}
-                    />
-                    <small style={{ color: '#6B7280', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem' }}>
-                      {manualProduct.currency === 'LYD' 
-                        ? 'العملة الأساسية - لا حاجة لسعر صرف' 
-                        : `1 ${manualProduct.currency} = ${manualProduct.exchangeRate || 1} LYD`}
-                    </small>
-                    {manualProduct.price && manualProduct.exchangeRate && manualProduct.currency !== 'LYD' && (
-                      <small style={{ color: '#2563EB', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem', fontWeight: '600' }}>
-                        سعر التكلفة بعد التحويل: {(parseFloat(manualProduct.price) * parseFloat(manualProduct.exchangeRate)).toFixed(2)} د.ل
-                      </small>
-                    )}
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>صورة المنتج (اختياري)</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setManualProduct({ ...manualProduct, picture: e.target.files[0] })}
-                      className={styles.fileInput}
-                    />
-                  </div>
-                </div>
-                <button
-                  onClick={handleAddManualProduct}
-                  className={styles.addToOrderButton}
-                  type="button"
-                >
-                  <HiPlus />
-                  إضافة للطلب / Add to Order
-                </button>
-              </div>
-            </>
-          )}
+          </div>
         </div>
       </div>
+        </div>
+      )}
 
       {/* 3. Order Items Table */}
       {orderItems.length > 0 && (
@@ -1520,7 +1412,7 @@ export default function NewOrderPage() {
                           )}
                           {item.sellingPrice && (
                             <span style={{ fontSize: '0.85rem', color: '#059669', fontWeight: '500' }}>
-                              سعر البيع: {parseFloat(item.sellingPrice).toFixed(2)} د.ل
+                              سعر البيع: {Math.round(parseFloat(item.sellingPrice))} د.ل
                             </span>
                           )}
                         </div>
@@ -1531,18 +1423,18 @@ export default function NewOrderPage() {
                         {item.sellingPrice ? (
                           <>
                             <span style={{ fontWeight: '600', color: '#059669', fontSize: '1rem' }}>
-                              {(parseFloat(item.sellingPrice) * item.quantity).toFixed(2)} د.ل
+                              {Math.round(parseFloat(item.sellingPrice) * item.quantity)} د.ل
                             </span>
                             <span style={{ fontSize: '0.85rem', color: '#6B7280' }}>
-                              (سعر التكلفة: {convertToBaseCurrency(item.unitPrice * item.quantity, item.currency, item.exchangeRate).toFixed(2)} د.ل)
+                              (سعر التكلفة: {Math.round(convertToBaseCurrency(item.unitPrice * item.quantity, item.currency, item.exchangeRate))} د.ل)
                             </span>
                           </>
                         ) : (
                           <>
-                            <span>{(item.unitPrice * item.quantity).toFixed(2)} {item.currency || 'LYD'}</span>
+                            <span>{Math.round(item.unitPrice * item.quantity)} {item.currency || 'LYD'}</span>
                             {(item.currency && item.currency !== 'LYD' && item.exchangeRate) && (
                               <span style={{ fontSize: '0.85rem', color: '#6B7280', fontWeight: '500' }}>
-                                ≈ {convertToBaseCurrency(item.unitPrice * item.quantity, item.currency, item.exchangeRate).toFixed(2)} LYD
+                                ≈ {Math.round(convertToBaseCurrency(item.unitPrice * item.quantity, item.currency, item.exchangeRate))} LYD
                               </span>
                             )}
                           </>
@@ -1606,25 +1498,25 @@ export default function NewOrderPage() {
               <tfoot>
                 <tr>
                   <td colSpan="4" className={styles.totalLabel}>المجموع الفرعي (سعر البيع):</td>
-                  <td className={styles.totalValue}>{totals.sellingSubtotal.toFixed(2)} LYD</td>
+                  <td className={styles.totalValue}>{Math.round(totals.sellingSubtotal)} LYD</td>
                 </tr>
                 {totals.expensesTotal > 0 && (
                 <tr>
                     <td colSpan="4" className={styles.totalLabel}>المصروفات:</td>
-                    <td className={styles.totalValue}>{totals.expensesTotal.toFixed(2)} LYD</td>
+                    <td className={styles.totalValue}>{Math.round(totals.expensesTotal)} LYD</td>
                 </tr>
                 )}
                 <tr>
                   <td colSpan="4" className={styles.totalLabel}>الربح:</td>
-                  <td className={styles.totalValue}>{totals.profit.toFixed(2)} LYD</td>
+                  <td className={styles.totalValue}>{Math.round(totals.profit)} LYD</td>
                 </tr>
                 <tr className={styles.netProfitRow}>
                   <td colSpan="4" className={styles.totalLabel}>صافي الربح:</td>
-                  <td className={styles.netProfit}>{totals.netProfit.toFixed(2)} LYD</td>
+                  <td className={styles.netProfit}>{Math.round(totals.netProfit)} LYD</td>
                 </tr>
                 <tr className={styles.grandTotalRow}>
                   <td colSpan="4" className={styles.totalLabel}>الإجمالي (ما يدفعه العميل):</td>
-                  <td className={styles.grandTotal}>{totals.total.toFixed(2)} LYD</td>
+                  <td className={styles.grandTotal}>{Math.round(totals.total)} LYD</td>
                 </tr>
               </tfoot>
             </table>
@@ -1632,79 +1524,7 @@ export default function NewOrderPage() {
         </div>
       )}
 
-      {/* 4. Shipping & Routing */}
-      {/* <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>
-          <HiTruck />
-          مسار الشحن
-        </h2>
-        <div className={styles.grid}>
-          <div className={styles.formGroup}>
-            <label>شركة الشحن الدولي</label>
-            <select
-              value={shipping.internationalCompany}
-              onChange={(e) => setShipping({ ...shipping, internationalCompany: e.target.value })}
-              className={styles.select}
-            >
-              <option value="">اختر الشركة</option>
-              <option value="dhl">DHL</option>
-              <option value="fedex">FedEx</option>
-              <option value="aramex">Aramex</option>
-              <option value="other">أخرى</option>
-            </select>
-          </div>
-          <div className={styles.formGroup}>
-            <label>رقم التتبع (دولي)</label>
-            <input
-              type="text"
-              value={shipping.internationalTracking}
-              onChange={(e) => setShipping({ ...shipping, internationalTracking: e.target.value })}
-              className={styles.input}
-              placeholder="رقم التتبع"
-            />
-          </div>
-          <div className={styles.formGroup}>
-            <label>شركة التوصيل المحلية</label>
-            <select
-              value={shipping.localCompany}
-              onChange={(e) => setShipping({ ...shipping, localCompany: e.target.value })}
-              className={styles.select}
-            >
-              <option value="">اختر الشركة</option>
-              <option value="libya-post">بريد ليبيا</option>
-              <option value="local-courier">شركة توصيل محلية</option>
-              <option value="pickup">استلام من المقر</option>
-            </select>
-          </div>
-          <div className={styles.formGroup}>
-            <label>رقم التتبع (محلي)</label>
-            <input
-              type="text"
-              value={shipping.localTracking}
-              onChange={(e) => setShipping({ ...shipping, localTracking: e.target.value })}
-              className={styles.input}
-              placeholder="رقم التتبع"
-            />
-          </div>
-          <div className={styles.formGroup}>
-            <label>المستودع / نقطة الاستلام</label>
-            <input
-              type="text"
-              value={shipping.warehouse}
-              onChange={(e) => setShipping({ ...shipping, warehouse: e.target.value })}
-              className={styles.input}
-              placeholder="نقطة الاستلام"
-            />
-          </div>
-        </div>
-        <div className={styles.shippingStages}>
-          <div className={styles.stage}>تم الشراء</div>
-          <div className={styles.stage}>تم الشحن دولياً</div>
-          <div className={styles.stage}>وصلت إلى ليبيا</div>
-          <div className={styles.stage}>تم التسليم للموصل المحلي</div>
-          <div className={styles.stage}>تم التسليم</div>
-        </div>
-      </div> */}
+     
 
       {/* 4.5. Expenses */}
       <div className={styles.section}>
@@ -1768,10 +1588,10 @@ export default function NewOrderPage() {
               })}
             </ul>
             <div style={{ marginTop: '0.5rem', fontWeight: 'bold' }}>
-              إجمالي المصروفات: {selectedExpenses.reduce((sum, expId) => {
+              إجمالي المصروفات: {Math.round(selectedExpenses.reduce((sum, expId) => {
                 const exp = expenses.find(e => e.id === expId)
                 return sum + (exp ? parseFloat(exp.cost) : 0)
-              }, 0).toFixed(2)} د.ل
+              }, 0))} د.ل
             </div>
           </div>
         )}
@@ -1847,7 +1667,7 @@ export default function NewOrderPage() {
           <div className={styles.formGroup}>
             <label>الرصيد المتبقي</label>
             <div className={styles.remainingBalance}>
-              {totals.total - (parseFloat(payment.depositAmount) || 0)} د.ل
+              {Math.round(totals.total - (parseFloat(payment.depositAmount) || 0))} د.ل
             </div>
           </div>
         </div>

@@ -68,7 +68,7 @@ export default function Sidebar() {
       id: 'dashboard',
       label: 'لوحة التحكم',
       icon: HiHome,
-      path: '/',
+      path: '/dashboard',
       children: null
     },
     {
@@ -91,6 +91,14 @@ export default function Sidebar() {
     //     { label: 'العناصر التالفة', path: '/order-items/damaged' }
     //   ]
     // },
+    {
+      id: 'catalog',
+      label: 'منتجات الكتالوج',
+      icon: HiCube,
+      children: [
+        { label: 'قائمة المنتجات', path: '/catalog/products' }
+      ]
+    },
     {
       id: 'payments',
       label: 'المدفوعات',

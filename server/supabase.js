@@ -617,6 +617,41 @@ const orderOperations = {
   },
 
   /**
+   * Get order by internal reference (for customer tracking - public)
+   * @param {string} internalRef - Order reference e.g. ORD-1234567890
+   * @returns {Promise<Object|null>} Order with status and shipping stage only
+   */
+  async getByInternalRef(internalRef) {
+    const client = supabaseAdmin || supabase
+    if (!client) throw new Error('Supabase client not initialized')
+    if (!internalRef || !String(internalRef).trim()) return null
+
+    const ref = String(internalRef).trim().toUpperCase()
+    const { data: order, error: orderError } = await client
+      .from('orders')
+      .select('id, internal_ref, order_date, status, expected_delivery_date, total_amount')
+      .eq('internal_ref', ref)
+      .single()
+
+    if (orderError || !order) return null
+
+    const { data: shipping } = await client
+      .from('order_shipping')
+      .select('shipping_stage, international_tracking, local_tracking, international_shipped_date, arrived_libya_date, local_delivery_date, delivered_date')
+      .eq('order_id', order.id)
+      .single()
+
+    return {
+      internal_ref: order.internal_ref,
+      order_date: order.order_date,
+      status: order.status,
+      expected_delivery_date: order.expected_delivery_date,
+      total_amount: order.total_amount,
+      shipping: shipping || null
+    }
+  },
+
+  /**
    * Get all orders with filters
    * @param {Object} options - Query options
    * @param {string} options.status - Filter by status
@@ -648,9 +683,9 @@ const orderOperations = {
         ),
         expenses:order_expenses (
           id,
-          amount,
+          cost,
           currency,
-          exchange_rate
+          category
         )
       `)
       .order('created_at', { ascending: false })
@@ -1292,6 +1327,107 @@ const financialSettingsOperations = {
   }
 }
 
+/**
+ * Catalog products (customer-facing list, managed from admin)
+ */
+const catalogProductOperations = {
+  /**
+   * Get all active products for customer display
+   * @param {Object} options - { category, limit, offset }
+   * @returns {Promise<Array>}
+   */
+  async getAllActive({ category, limit = 100, offset = 0 } = {}) {
+    const client = supabaseAdmin || supabase
+    if (!client) throw new Error('Supabase client not initialized')
+    let query = client
+      .from('catalog_products')
+      .select('id, name, name_ar, description, description_ar, price, currency, image_url, images, category')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+    if (category) query = query.eq('category', category)
+    const { data, error } = await query
+    if (error) throw error
+    return data || []
+  },
+
+  /**
+   * Get all products (admin) – includes inactive
+   */
+  async getAll({ category, limit = 200, offset = 0 } = {}) {
+    if (!supabaseAdmin) throw new Error('Supabase admin client not initialized')
+    let query = supabaseAdmin
+      .from('catalog_products')
+      .select('*')
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+    if (category) query = query.eq('category', category)
+    const { data, error } = await query
+    if (error) throw error
+    return data || []
+  },
+
+  async getById(id) {
+    const client = supabaseAdmin || supabase
+    if (!client) throw new Error('Supabase client not initialized')
+    const { data, error } = await client
+      .from('catalog_products')
+      .select('*')
+      .eq('id', id)
+      .single()
+    if (error) throw error
+    return data
+  },
+
+  async create(row) {
+    if (!supabaseAdmin) throw new Error('Supabase admin client not initialized')
+    const { data, error } = await supabaseAdmin
+      .from('catalog_products')
+      .insert([{
+        name: row.name,
+        name_ar: row.name_ar,
+        description: row.description,
+        description_ar: row.description_ar,
+        price: parseFloat(row.price) || 0,
+        currency: row.currency || 'LYD',
+        image_url: row.image_url,
+        images: row.images || [],
+        category: row.category,
+        is_active: row.is_active !== false,
+        sort_order: parseInt(row.sort_order, 10) || 0,
+        updated_at: new Date().toISOString()
+      }])
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  },
+
+  async update(id, updates) {
+    if (!supabaseAdmin) throw new Error('Supabase admin client not initialized')
+    const allowed = ['name', 'name_ar', 'description', 'description_ar', 'price', 'currency', 'image_url', 'images', 'category', 'is_active', 'sort_order']
+    const clean = {}
+    allowed.forEach(k => { if (updates[k] !== undefined) clean[k] = updates[k] })
+    clean.updated_at = new Date().toISOString()
+    const { data, error } = await supabaseAdmin
+      .from('catalog_products')
+      .update(clean)
+      .eq('id', id)
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  },
+
+  async delete(id) {
+    if (!supabaseAdmin) throw new Error('Supabase admin client not initialized')
+    const { error } = await supabaseAdmin.from('catalog_products').delete().eq('id', id)
+    if (error) throw error
+  }
+}
+
 module.exports = {
   supabase,
   supabaseAdmin,
@@ -1300,7 +1436,8 @@ module.exports = {
   order: orderOperations,
   financialAccount: financialAccountOperations,
   financialTransaction: financialTransactionOperations,
-  financialSettings: financialSettingsOperations
+  financialSettings: financialSettingsOperations,
+  catalogProduct: catalogProductOperations
 }
 
 

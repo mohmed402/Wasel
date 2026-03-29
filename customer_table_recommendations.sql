@@ -239,9 +239,7 @@ INSERT INTO customer (
 
 -- ============================================
 -- QUERY EXAMPLES
--- ============================================
-
--- Get all active customers
+-- ============================================-- Get all active customers
 SELECT * FROM customer WHERE is_active = TRUE ORDER BY name;
 
 -- Get customer by phone
