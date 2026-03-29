@@ -8,7 +8,7 @@ import { financialSettings } from '../../../server/supabase'
  */
 export async function GET() {
   try {
-    let rateUsdLyd = parseFloat(process.env.EXCHANGE_RATE_USD_LYD || '0') || 5.2
+    let rateUsdLyd = parseFloat(process.env.EXCHANGE_RATE_USD_LYD || '0') || 9.2
 
     try {
       const settings = await financialSettings.get()
@@ -28,7 +28,7 @@ export async function GET() {
   } catch (error) {
     console.error('Exchange rate error:', error)
     return NextResponse.json(
-      { USD: 5.2, base: 'LYD' },
+      { USD: 9.2, base: 'LYD' },
       { status: 200 }
     )
   }

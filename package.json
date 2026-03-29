@@ -6,10 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "shein-scraper": "node shein-scraper-service/server.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
     "next": "^14.2.5",
     "playwright": "^1.57.0",
     "react": "^18.3.1",

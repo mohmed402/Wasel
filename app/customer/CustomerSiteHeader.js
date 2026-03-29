@@ -297,8 +297,8 @@ export default function CustomerSiteHeader({
             </svg>
           </Link>
           <div className={styles.dropdown}>
-            <Link href="/customer/basket" className={styles.dropItem}>
-              <HiShoppingCart className={styles.dropIconSvg} aria-hidden /> سلة المشتريات
+            <Link href="/customer/shein" className={styles.dropItem}>
+              <HiShoppingCart className={styles.dropIconSvg} aria-hidden /> سلة Shein
             </Link>
             <Link href="/customer/track" className={styles.dropItem}>
               <HiClipboardList className={styles.dropIconSvg} aria-hidden /> طلباتي
