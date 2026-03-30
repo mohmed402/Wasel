@@ -14,6 +14,11 @@ if (process.env.SKIP_PLAYWRIGHT_BROWSER === '1') {
   process.exit(0)
 }
 
+// Official Playwright Docker image already ships browsers under /ms-playwright
+if (process.env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD === '1') {
+  process.exit(0)
+}
+
 if (!existsSync(cli)) {
   process.exit(0)
 }
