@@ -22,12 +22,14 @@ function mapBasketItemToOrderItem(item, usdToLyd) {
       : item.productId != null
         ? String(item.productId)
         : ''
+  const sku =
+    item.sku != null && String(item.sku).trim() !== '' ? String(item.sku).trim() : ''
 
   return {
     name,
     productId,
     variant: item.variant || '',
-    sku: '',
+    sku,
     quantity: qty,
     unitPrice: unit,
     sellingPrice: unitLyd,
@@ -72,6 +74,7 @@ export async function POST(request) {
       notes,
       items = [],
       exchangeRateUsdLyd = 5.2,
+      basket_link: basketLinkBody,
     } = body
 
     const name = String(customerName || '').trim()
@@ -153,13 +156,17 @@ export async function POST(request) {
     }
 
     const internal_ref = buildInternalRef()
+    const basket_link =
+      basketLinkBody != null && String(basketLinkBody).trim()
+        ? String(basketLinkBody).trim()
+        : null
 
     const orderPayload = {
       customer_id: customerId,
       internal_ref,
       order_date: new Date().toISOString().split('T')[0],
       order_source: 'other',
-      basket_link: null,
+      basket_link,
       expected_delivery_date: null,
       notes: notesBlock,
       subtotal: totalLyd,

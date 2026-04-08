@@ -1,12 +1,33 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { HiLink, HiEye } from 'react-icons/hi'
+import { useRouter } from 'next/navigation'
+import { HiEye, HiX } from 'react-icons/hi'
 import styles from './customer.module.css'
+import SheinBasketLinkLoader from './SheinBasketLinkLoader'
+import { buildSheinKey, replaceSheinLinesFromCartShare } from './basket-storage'
+
+function mapApiItemToPreview(it, index) {
+  const base = {
+    productId: it.productId ?? null,
+    sku: it.sku != null ? String(it.sku) : '',
+    variant: it.variant || null,
+    name: it.name || 'منتج',
+    price: typeof it.price === 'number' ? it.price : parseFloat(it.price) || 0,
+    currency: it.currency || 'USD',
+    qty: Math.max(1, parseInt(it.qty ?? it.quantity, 10) || 1),
+    image: it.image || it.images?.[0],
+    images: it.images || (it.image ? [it.image] : []),
+  }
+  const sheinKey = `${buildSheinKey(base)}#${index}`
+  return { ...base, sheinKey, rowId: `row-${index}-${sheinKey}` }
+}
 
 export default function SheinTools() {
+  const router = useRouter()
   const [basketLink, setBasketLink] = useState('')
   const [basketItems, setBasketItems] = useState([])
+  const [loadedCartShareUrl, setLoadedCartShareUrl] = useState(null)
   const [basketLoading, setBasketLoading] = useState(false)
   const [basketError, setBasketError] = useState('')
   const [exchangeRate, setExchangeRate] = useState(5.2)
@@ -33,13 +54,17 @@ export default function SheinTools() {
       setBasketError('أدخل رابط مشاركة سلة Shein (يجب أن يحتوي على cart/share)')
       return
     }
-    setBasketError(''); setBasketItems([]); setBasketLoading(true)
+    setBasketError('')
+    setBasketItems([])
+    setLoadedCartShareUrl(null)
+    setBasketLoading(true)
     try {
       let url = link
       try {
         const u = new URL(link)
         if (u.hostname.includes('shein.com') && !u.searchParams.has('currency')) {
-          u.searchParams.set('currency', 'USD'); url = u.toString()
+          u.searchParams.set('currency', 'USD')
+          url = u.toString()
         }
       } catch (_) {}
       const res = await fetch('/api/shein/cart-items', {
@@ -49,19 +74,41 @@ export default function SheinTools() {
         signal: AbortSignal.timeout(70000),
       })
       const data = await res.json()
-      if (!res.ok || data.error) { setBasketError(data.error || data.message || 'فشل جلب السلة'); return }
-      setBasketItems(
-        (data.items || []).map((it) => ({
-          name: it.name || 'منتج',
-          price: typeof it.price === 'number' ? it.price : parseFloat(it.price) || 0,
-          currency: it.currency || 'USD',
-          qty: it.qty || 1,
-          image: it.image || it.images?.[0],
-        }))
-      )
+      if (!res.ok || data.error) {
+        setBasketError(data.error || data.message || 'فشل جلب السلة')
+        return
+      }
+      setLoadedCartShareUrl(url)
+      setBasketItems((data.items || []).map((it, i) => mapApiItemToPreview(it, i)))
     } catch (e) {
       setBasketError(e.name === 'AbortError' ? 'انتهت المهلة' : 'حدث خطأ في الاتصال')
-    } finally { setBasketLoading(false) }
+    } finally {
+      setBasketLoading(false)
+    }
+  }
+
+  const bumpQty = (rowId, delta) => {
+    setBasketItems((prev) =>
+      prev.map((item) => {
+        if (item.rowId !== rowId) return item
+        const next = (item.qty || 1) + delta
+        if (next < 1) return item
+        return { ...item, qty: next }
+      })
+    )
+  }
+
+  const removeLine = (rowId) => {
+    setBasketItems((prev) => prev.filter((item) => item.rowId !== rowId))
+  }
+
+  const handleContinueToBasket = () => {
+    if (!loadedCartShareUrl || basketItems.length === 0) return
+    replaceSheinLinesFromCartShare({
+      cartShareUrl: loadedCartShareUrl,
+      lines: basketItems,
+    })
+    router.push('/customer/basket')
   }
 
   const basketTotalUsd = basketItems.reduce((s, i) => s + (i.price || 0) * (i.qty || 1), 0)
@@ -94,27 +141,67 @@ export default function SheinTools() {
           </button>
         </div>
         {basketError && <div className={styles.errorMsg}>{basketError}</div>}
+        {basketLoading && <SheinBasketLinkLoader />}
         {basketItems.length > 0 && (
           <>
             <ul className={styles.basketItems}>
-              {basketItems.map((item, i) => (
-                <li key={i} className={styles.basketItem}>
+              {basketItems.map((item) => (
+                <li key={item.rowId} className={styles.basketItem}>
                   {item.image && (
                     <img src={item.image} alt="" className={styles.basketItemImg} width={54} height={54} />
                   )}
                   <div className={styles.basketItemInfo}>
                     <div className={styles.basketItemName}>{item.name}</div>
-                    <div className={styles.basketItemMeta}>{item.qty} × {formatUsd(item.price)} {item.currency}</div>
+                    <div className={styles.basketItemMeta}>
+                      {formatUsd(item.price)} {item.currency} للوحدة
+                      {item.variant ? ` · ${item.variant}` : ''}
+                    </div>
+                  </div>
+                  <div className={styles.basketQtyControl} aria-label="الكمية">
+                    <button
+                      type="button"
+                      className={styles.basketQtyBtn}
+                      onClick={() => bumpQty(item.rowId, -1)}
+                      disabled={(item.qty || 0) <= 1}
+                      aria-label="تقليل الكمية"
+                    >
+                      −
+                    </button>
+                    <span className={styles.basketQtyValue}>{item.qty || 1}</span>
+                    <button
+                      type="button"
+                      className={styles.basketQtyBtn}
+                      onClick={() => bumpQty(item.rowId, 1)}
+                      aria-label="زيادة الكمية"
+                    >
+                      +
+                    </button>
                   </div>
                   <span className={styles.basketItemPrice}>
                     {formatLyd((item.price || 0) * (item.qty || 1) * exchangeRate)} د.ل
                   </span>
+                  <button
+                    type="button"
+                    className={styles.removeBtn}
+                    onClick={() => removeLine(item.rowId)}
+                    aria-label="إزالة من القائمة"
+                  >
+                    <HiX />
+                  </button>
                 </li>
               ))}
             </ul>
             <div className={styles.totalRow}>
               <span className={styles.totalLabel}>الإجمالي بالدينار الليبي</span>
               <span className={styles.totalAmount}>{formatLyd(basketTotalLyd)} د.ل</span>
+            </div>
+            <div className={styles.sheinPreviewActions}>
+              <button type="button" className={styles.checkoutStartBtn} onClick={handleContinueToBasket}>
+                متابعة إلى سلة الطلب
+              </button>
+              <p className={styles.sheinPreviewHint}>
+                يتم نقل الأصناف المعروضة أعلاه إلى سلة الطلب مع الحفاظ على منتجات الكتالوج إن وُجدت.
+              </p>
             </div>
           </>
         )}

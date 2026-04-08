@@ -1450,6 +1450,23 @@ font-family: 'Tajawal' !important;
   transform: translateY(-1px);
   box-shadow: 0 8px 28px rgba(8,175,102,0.4);
 }
+.sheinPreviewActions {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.65rem;
+}
+.sheinPreviewActions .checkoutStartBtn {
+  max-width: none;
+}
+.sheinPreviewHint {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: rgba(234,234,234,0.52);
+  text-align: center;
+}
 .checkoutCard {
   border-radius: 14px;
   border: 1px solid rgba(234,234,234,0.1);

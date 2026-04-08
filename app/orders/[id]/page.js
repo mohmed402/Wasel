@@ -19,7 +19,9 @@ import {
   HiX,
   HiPlus,
   HiTrendingUp,
-  HiTrendingDown
+  HiTrendingDown,
+  HiLink,
+  HiClipboard
 } from 'react-icons/hi'
 
 export default function OrderDetailPage() {
@@ -45,6 +47,7 @@ export default function OrderDetailPage() {
     selectedAccounts: [],
     exchangeRate: 1.0
   })
+  const [sheinSummaryCopied, setSheinSummaryCopied] = useState(false)
 
   const fetchOrder = async () => {
     try {
@@ -74,6 +77,7 @@ export default function OrderDetailPage() {
         remainingBalance: parseFloat(data.payment?.remaining_balance) || 0,
         shippingStage: data.shipping?.shipping_stage || 'not_started',
         deliveryDate: data.expected_delivery_date || null,
+        basketLink: data.basket_link && String(data.basket_link).trim() ? String(data.basket_link).trim() : null,
         items: (data.items || []).map(item => ({
           id: item.id,
           name: item.name || 'عنصر غير معروف',
@@ -88,7 +92,13 @@ export default function OrderDetailPage() {
           // Keep original data for reference
           unitPrice: item.unit_price ? parseFloat(item.unit_price) : null,
           currency: item.currency || null,
-          exchangeRate: item.exchange_rate ? parseFloat(item.exchange_rate) : null
+          exchangeRate: item.exchange_rate ? parseFloat(item.exchange_rate) : null,
+          productId: item.product_id != null ? String(item.product_id) : '',
+          variant: item.variant || '',
+          sku: item.sku || '',
+          productLink: item.product_link && String(item.product_link).trim() ? String(item.product_link).trim() : '',
+          images: Array.isArray(item.images) ? item.images : [],
+          source: item.source || ''
         })),
         payments: data.payment ? [
           {
@@ -288,6 +298,31 @@ export default function OrderDetailPage() {
       alert(`حدث خطأ أثناء تحديث حالة العنصر: ${err.message}`)
     } finally {
       setUpdatingStatus(false)
+    }
+  }
+
+  const copySheinSummary = async () => {
+    if (!order?.items?.length) return
+    const lines = []
+    lines.push(`المرجع: ${order.id}`)
+    if (order.basketLink) lines.push(`رابط Shein: ${order.basketLink}`)
+    lines.push('')
+    order.items.forEach((it, i) => {
+      lines.push(`${i + 1}. ${it.name}`)
+      lines.push(`   الكمية: ${it.quantity}`)
+      if (it.variant) lines.push(`   المتغير: ${it.variant}`)
+      if (it.productId) lines.push(`   معرف المنتج: ${it.productId}`)
+      if (it.sku) lines.push(`   SKU: ${it.sku}`)
+      if (it.productLink) lines.push(`   الرابط: ${it.productLink}`)
+      lines.push('')
+    })
+    const text = lines.join('\n').trim()
+    try {
+      await navigator.clipboard.writeText(text)
+      setSheinSummaryCopied(true)
+      setTimeout(() => setSheinSummaryCopied(false), 2500)
+    } catch {
+      alert(text)
     }
   }
 
@@ -549,7 +584,44 @@ export default function OrderDetailPage() {
 
         {/* Items List */}
         <div className={styles.card}>
-          <h2 className={styles.cardTitle}>عناصر الطلب</h2>
+          <h2
+            className={styles.cardTitle}
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.75rem',
+            }}
+          >
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem' }}>عناصر الطلب</span>
+            {order.items && order.items.length > 0 ? (
+              <button
+                type="button"
+                className={styles.copySummaryBtn}
+                onClick={copySheinSummary}
+              >
+                <HiClipboard aria-hidden />
+                {sheinSummaryCopied ? 'تم النسخ' : 'نسخ ملخص السلة'}
+              </button>
+            ) : null}
+          </h2>
+          {order.basketLink ? (
+            <div className={styles.basketLinkBox}>
+              <span className={styles.basketLinkLabel}>
+                <HiLink aria-hidden style={{ verticalAlign: 'middle', marginInlineEnd: '0.35rem' }} />
+                رابط مشاركة Shein الأصلي:
+              </span>
+              <a
+                href={order.basketLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.basketLinkAnchor}
+              >
+                {order.basketLink}
+              </a>
+            </div>
+          ) : null}
           <div className={styles.itemsList}>
             {order.items && order.items.length > 0 ? (
               order.items.map((item) => (
@@ -559,6 +631,24 @@ export default function OrderDetailPage() {
                   <span className={styles.itemDetails}>
                     الكمية: {item.quantity} × {item.price} د.ل
                   </span>
+                  {(item.variant || item.productId || item.sku || item.source) ? (
+                    <span className={styles.itemMeta}>
+                      {item.source ? <span>المصدر: {item.source}</span> : null}
+                      {item.variant ? <span>المتغير: {item.variant}</span> : null}
+                      {item.productId ? <span>معرف المنتج: {item.productId}</span> : null}
+                      {item.sku ? <span>SKU: {item.sku}</span> : null}
+                    </span>
+                  ) : null}
+                  {item.productLink ? (
+                    <a
+                      href={item.productLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.itemProductLink}
+                    >
+                      فتح رابط المنتج
+                    </a>
+                  ) : null}
                 </div>
                 <div className={styles.itemStatus} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   <select

@@ -1,8 +1,9 @@
 /**
  * Customer basket in localStorage (catalog + Shein lines).
  * Key: wasel_customer_basket
+ * Shape: { items: [...], meta?: { sheinCartShareUrl?: string } }
  * Catalog: { type: 'catalog', id, name, name_ar, price, currency, image_url, quantity }
- * Shein: { type: 'shein', sheinKey, productId?, name, price, currency, image_url, quantity, variant?, source_url? }
+ * Shein: { type: 'shein', sheinKey, productId?, sku?, name, price, currency, image_url, quantity, variant?, source_url? }
  */
 
 const KEY = 'wasel_customer_basket'
@@ -18,16 +19,24 @@ function normalizeItems(items) {
   })
 }
 
+function normalizeMeta(meta) {
+  if (!meta || typeof meta !== 'object') return {}
+  return { ...meta }
+}
+
 export function getBasket() {
-  if (typeof window === 'undefined') return { items: [] }
+  if (typeof window === 'undefined') return { items: [], meta: {} }
   try {
     const raw = localStorage.getItem(KEY)
-    if (!raw) return { items: [] }
+    if (!raw) return { items: [], meta: {} }
     const data = JSON.parse(raw)
-    if (!Array.isArray(data.items)) return { items: [] }
-    return { items: normalizeItems(data.items) }
+    if (!Array.isArray(data.items)) return { items: [], meta: {} }
+    return {
+      items: normalizeItems(data.items),
+      meta: normalizeMeta(data.meta),
+    }
   } catch {
-    return { items: [] }
+    return { items: [], meta: {} }
   }
 }
 
@@ -41,7 +50,11 @@ export function buildSheinKey(item) {
 export function setBasket(basket) {
   if (typeof window === 'undefined') return
   try {
-    localStorage.setItem(KEY, JSON.stringify({ items: basket.items || [] }))
+    const payload = {
+      items: basket.items || [],
+      meta: basket.meta !== undefined ? normalizeMeta(basket.meta) : {},
+    }
+    localStorage.setItem(KEY, JSON.stringify(payload))
   } catch (e) {
     console.warn('Basket set failed', e)
   }
@@ -57,7 +70,7 @@ export function addToBasket(catalogItem, quantity = 1) {
     price: parseFloat(catalogItem.price) || 0,
     currency: catalogItem.currency || 'LYD',
     image_url: catalogItem.image_url || (catalogItem.images && catalogItem.images[0]),
-    quantity: Math.max(1, parseInt(quantity, 10) || 1)
+    quantity: Math.max(1, parseInt(quantity, 10) || 1),
   }
   const idx = basket.items.findIndex((i) => i.type === 'catalog' && i.id === catalogItem.id)
   if (idx >= 0) {
@@ -65,14 +78,14 @@ export function addToBasket(catalogItem, quantity = 1) {
   } else {
     basket.items.push(entry)
   }
-  setBasket(basket)
+  setBasket({ items: basket.items, meta: basket.meta })
   return getBasket()
 }
 
 export function removeFromBasket(catalogId) {
   const basket = getBasket()
   basket.items = basket.items.filter((i) => !(i.type === 'catalog' && i.id === catalogId))
-  setBasket(basket)
+  setBasket({ items: basket.items, meta: basket.meta })
   return getBasket()
 }
 
@@ -83,12 +96,12 @@ export function updateBasketQuantity(catalogId, quantity) {
     item.quantity = Math.max(0, parseInt(quantity, 10) || 0)
     if (item.quantity === 0) basket.items = basket.items.filter((i) => i !== item)
   }
-  setBasket(basket)
+  setBasket({ items: basket.items, meta: basket.meta })
   return getBasket()
 }
 
 export function clearBasket() {
-  setBasket({ items: [] })
+  setBasket({ items: [], meta: {} })
   return getBasket()
 }
 
@@ -106,6 +119,7 @@ export function addSheinToBasket(item) {
     quantity: Math.max(1, parseInt(item.qty ?? item.quantity, 10) || 1),
     variant: item.variant || null,
     source_url: item.source_url || null,
+    sku: item.sku != null && String(item.sku).trim() !== '' ? String(item.sku).trim() : '',
   }
   const idx = basket.items.findIndex((i) => i.type === 'shein' && i.sheinKey === sheinKey)
   if (idx >= 0) {
@@ -113,7 +127,7 @@ export function addSheinToBasket(item) {
   } else {
     basket.items.push(entry)
   }
-  setBasket(basket)
+  setBasket({ items: basket.items, meta: basket.meta })
   return getBasket()
 }
 
@@ -128,15 +142,45 @@ export function addSheinCartItemsToBasket(apiItems) {
       qty: it.qty || 1,
       image: it.image || it.images?.[0],
       variant: it.variant || null,
+      sku: it.sku || '',
     })
   }
+  return getBasket()
+}
+
+/**
+ * Replace all Shein lines with the edited preview list; keep catalog lines.
+ * Sets meta.sheinCartShareUrl for checkout → orders.basket_link.
+ */
+export function replaceSheinLinesFromCartShare({ cartShareUrl, lines }) {
+  const basket = getBasket()
+  const catalog = basket.items.filter((i) => i.type !== 'shein')
+  const url = cartShareUrl && String(cartShareUrl).trim() ? String(cartShareUrl).trim() : null
+  const newShein = (lines || []).map((line) => {
+    const sheinKey = line.sheinKey || buildSheinKey(line)
+    return {
+      type: 'shein',
+      sheinKey,
+      productId: line.productId ?? null,
+      name: line.name || 'منتج',
+      price: parseFloat(line.price) || 0,
+      currency: line.currency || 'USD',
+      quantity: Math.max(1, parseInt(line.qty ?? line.quantity, 10) || 1),
+      variant: line.variant || null,
+      image_url: line.image_url || line.image || null,
+      sku: line.sku != null && String(line.sku).trim() !== '' ? String(line.sku).trim() : '',
+      source_url: null,
+    }
+  })
+  const meta = { ...basket.meta, sheinCartShareUrl: url }
+  setBasket({ items: [...catalog, ...newShein], meta })
   return getBasket()
 }
 
 export function removeSheinFromBasket(sheinKey) {
   const basket = getBasket()
   basket.items = basket.items.filter((i) => !(i.type === 'shein' && i.sheinKey === sheinKey))
-  setBasket(basket)
+  setBasket({ items: basket.items, meta: basket.meta })
   return getBasket()
 }
 
@@ -147,7 +191,7 @@ export function updateSheinQuantity(sheinKey, quantity) {
     item.quantity = Math.max(0, parseInt(quantity, 10) || 0)
     if (item.quantity === 0) basket.items = basket.items.filter((i) => i !== item)
   }
-  setBasket(basket)
+  setBasket({ items: basket.items, meta: basket.meta })
   return getBasket()
 }
 

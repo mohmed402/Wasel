@@ -161,7 +161,7 @@
 .item {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   padding: 1rem;
   background: var(--secondary);
   border-radius: var(--border-radius);
@@ -186,9 +186,81 @@
   color: #6B7280;
 }
 
+.itemMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.82rem;
+  color: #6B7280;
+  margin-top: 0.35rem;
+}
+
+.itemProductLink {
+  display: inline-block;
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.itemProductLink:hover {
+  text-decoration: underline;
+}
+
+.basketLinkBox {
+  margin: -0.5rem 0 1.25rem 0;
+  padding: 0.85rem 1rem;
+  background: #F9FAFB;
+  border-radius: var(--border-radius);
+  border: 1px solid #E5E7EB;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.basketLinkLabel {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #4B5563;
+}
+
+.basketLinkAnchor {
+  font-size: 0.82rem;
+  word-break: break-all;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.basketLinkAnchor:hover {
+  text-decoration: underline;
+}
+
+.copySummaryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Tajawal', sans-serif;
+  color: var(--primary);
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.copySummaryBtn:hover {
+  background: #DBEAFE;
+}
+
 .itemStatus {
   margin-right: auto;
   margin-left: 1rem;
+  align-self: center;
+  flex-shrink: 0;
 }
 
 .statusReceived {

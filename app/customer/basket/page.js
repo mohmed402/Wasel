@@ -103,11 +103,15 @@ export default function CustomerBasketPage() {
       return
     }
 
-    const snapshot = getBasket().items
+    const { items: snapshot, meta } = getBasket()
     if (snapshot.length === 0) {
       setSubmitError('السلة فارغة')
       return
     }
+
+    const basket_link = meta?.sheinCartShareUrl && String(meta.sheinCartShareUrl).trim()
+      ? String(meta.sheinCartShareUrl).trim()
+      : undefined
 
     setSubmitLoading(true)
     try {
@@ -124,6 +128,7 @@ export default function CustomerBasketPage() {
           notes: orderNotes.trim() || undefined,
           items: snapshot,
           exchangeRateUsdLyd: exchangeRate,
+          ...(basket_link ? { basket_link } : {}),
         }),
       })
       const data = await res.json()

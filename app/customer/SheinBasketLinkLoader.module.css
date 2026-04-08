@@ -1,0 +1,202 @@
+/* ─────────────────────────────────────────
+   SheinBasketLinkLoader.module.css
+   Dark theme · green #22c466 accent
+───────────────────────────────────────── */
+
+/* Root */
+.root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2.25rem 1rem 1.25rem;
+  width: 100%;
+}
+
+/* ── Bag visual ─────────────────────────── */
+
+.visual {
+  position: relative;
+  width: 80px;
+  height: 88px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.bagSvg {
+  width: 56px;
+  height: 60px;
+  color: #22c466;
+  position: relative;
+  z-index: 2;
+  filter: drop-shadow(0 0 10px rgba(34, 196, 102, 0.38));
+}
+
+/* Inner fill pulses as items land */
+.bagFill {
+  opacity: 0;
+  animation: sheinFillPulse 1.9s ease-in-out infinite;
+}
+
+@keyframes sheinFillPulse {
+  0%   { opacity: 0; }
+  35%  { opacity: 0.09; }
+  65%  { opacity: 0.16; }
+  100% { opacity: 0; }
+}
+
+/* ── Falling product chips ─────────────── */
+
+.items {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 56px;
+  height: 60px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.item {
+  position: absolute;
+  top: 2px;
+  width: 14px;
+  height: 9px;
+  border-radius: 3px;
+  opacity: 0;
+  animation: sheinItemDrop 1.9s ease-in infinite;
+}
+
+.itemA { left: 4px;  background: #22c466;                  animation-delay: 0s;     }
+.itemB { left: 21px; background: rgba(34, 196, 102, 0.75); animation-delay: 0.63s;  }
+.itemC { left: 38px; background: rgba(34, 196, 102, 0.50); animation-delay: 1.26s;  }
+
+@keyframes sheinItemDrop {
+  0%   { transform: translateY(0)    scaleX(1);    opacity: 0;   }
+  8%   {                                            opacity: 1;   }
+  65%  { transform: translateY(30px) scaleX(0.85); opacity: 0.9; }
+  85%  { transform: translateY(40px) scaleX(0.6);  opacity: 0.4; }
+  100% { transform: translateY(46px) scaleX(0.4);  opacity: 0;   }
+}
+
+/* ── Radial glow below bag ─────────────── */
+
+.glow {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 56px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(34, 196, 102, 0.2);
+  filter: blur(8px);
+  animation: sheinGlowBreath 1.9s ease-in-out infinite;
+  z-index: 1;
+}
+
+@keyframes sheinGlowBreath {
+  0%, 100% { opacity: 0.4; transform: translateX(-50%) scaleX(0.8); }
+  50%       { opacity: 1;   transform: translateX(-50%) scaleX(1.2); }
+}
+
+/* ── Cycling status label ──────────────── */
+
+.label {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.62);
+  margin: 0;
+  letter-spacing: 0.02em;
+  text-align: center;
+  animation: sheinMsgReveal 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes sheinMsgReveal {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+/* ── Skeleton product rows ─────────────── */
+
+.skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
+}
+
+.skRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: rgba(255, 255, 255, 0.035);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  animation: sheinRowIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes sheinRowIn {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+/* Thumbnail (right side, RTL) */
+.skThumb {
+  width: 46px;
+  height: 46px;
+  border-radius: 7px;
+  flex-shrink: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.11) 50%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+  background-size: 200px 100%;
+  animation: sheinShimmer 1.7s linear infinite;
+}
+
+/* Text body */
+.skBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.skLine {
+  height: 10px;
+  border-radius: 5px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.11) 50%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+  background-size: 200px 100%;
+  animation: sheinShimmer 1.7s linear infinite;
+}
+
+/* Price (left side, green tint) */
+.skPrice {
+  width: 54px;
+  height: 22px;
+  border-radius: 5px;
+  flex-shrink: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(34, 196, 102, 0.10) 0%,
+    rgba(34, 196, 102, 0.20) 50%,
+    rgba(34, 196, 102, 0.10) 100%
+  );
+  background-size: 200px 100%;
+  animation: sheinShimmer 1.7s linear infinite;
+}
+
+@keyframes sheinShimmer {
+  0%   { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
