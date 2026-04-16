@@ -37,7 +37,21 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({ pricingMethod, shippingCost, exchangeRateDisplay })
+    // forcedMethod: if set, only show that one option to the customer (no choice)
+    let forcedMethod = null
+    if (supabaseAdmin) {
+      try {
+        const { data: s2 } = await supabaseAdmin
+          .from('financial_settings')
+          .select('settings_json')
+          .order('id', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        if (s2?.settings_json?.forcedMethod) forcedMethod = s2.settings_json.forcedMethod
+      } catch (_) {}
+    }
+
+    return NextResponse.json({ pricingMethod, shippingCost, exchangeRateDisplay, forcedMethod })
   } catch (e) {
     console.error('pricing-settings error:', e)
     return NextResponse.json({ pricingMethod: 1, shippingCost: 0, exchangeRateDisplay: 6.0 })

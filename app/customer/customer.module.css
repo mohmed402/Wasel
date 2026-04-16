@@ -2150,7 +2150,7 @@ font-family: 'Tajawal' !important;
 }
 .basketBadge:hover { background: rgba(8,175,102,0.3); }
 
-/* ── Pricing banner ─────────────────────────────────────── */
+/* ── Pricing banner (legacy) ─────────────────────────────── */
 .pricingBanner {
   display: flex;
   align-items: center;
@@ -2162,6 +2162,193 @@ font-family: 'Tajawal' !important;
   font-size: 0.88rem;
   color: #f59e0b;
   margin-bottom: 1.25rem;
+}
+
+/* ── Pricing section (customer-facing selector) ──────────── */
+.pricingSection {
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+.pricingSectionHead {
+  margin-bottom: 1rem;
+}
+.pricingSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 0.25rem;
+}
+.pricingSectionSub {
+  font-size: 0.82rem;
+  color: rgba(232,232,234,0.48);
+  margin: 0;
+}
+
+.pricingCards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+.pricingCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1.1rem 1rem;
+  background: rgba(255,255,255,0.03);
+  border: 1.5px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  cursor: pointer;
+  text-align: start;
+  font-family: inherit;
+  transition: border-color 0.2s, background 0.2s, transform 0.18s, box-shadow 0.2s;
+}
+.pricingCard:hover {
+  border-color: rgba(8,175,102,0.4);
+  background: rgba(8,175,102,0.04);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.2);
+}
+.pricingCardSelected {
+  border-color: #08af66 !important;
+  background: rgba(8,175,102,0.1) !important;
+  box-shadow: 0 0 0 3px rgba(8,175,102,0.15), 0 8px 28px rgba(0,0,0,0.2) !important;
+  transform: translateY(-2px);
+}
+
+.pricingCardTop {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+.pricingCardIcon {
+  font-size: 1.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.pricingCardBadge {
+  margin-inline-start: auto;
+  padding: 0.22rem 0.55rem;
+  border-radius: 99px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+.pricingCardCheck {
+  margin-inline-start: auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #08af66;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  animation: badgePop 0.25s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+.pricingCardTitle {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.3;
+}
+.pricingCardSubtitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #08af66;
+  line-height: 1.3;
+}
+.pricingCardDesc {
+  font-size: 0.76rem;
+  color: rgba(232,232,234,0.52);
+  line-height: 1.55;
+  flex: 1;
+}
+.pricingCardFooter {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.pricingCardShipping {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: #f59e0b;
+  font-weight: 600;
+}
+.pricingCardTotal {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.8rem;
+  color: rgba(232,232,234,0.6);
+}
+.pricingCardTotal strong {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #08af66;
+}
+
+/* Selected method pill shown above checkout form */
+.selectedMethodPill {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.9rem;
+  background: rgba(8,175,102,0.1);
+  border: 1px solid rgba(8,175,102,0.3);
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #08af66;
+  margin-bottom: 0.75rem;
+}
+.selectedMethodChange {
+  margin-inline-start: auto;
+  padding: 0.25rem 0.65rem;
+  background: transparent;
+  border: 1px solid rgba(8,175,102,0.35);
+  border-radius: 7px;
+  color: rgba(8,175,102,0.75);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.selectedMethodChange:hover {
+  background: rgba(8,175,102,0.12);
+  border-color: #08af66;
+  color: #08af66;
+}
+
+/* Responsive: stack to 1 column on mobile */
+@media (max-width: 640px) {
+  .pricingCards {
+    grid-template-columns: 1fr;
+  }
+}
+@media (min-width: 641px) and (max-width: 900px) {
+  .pricingCards {
+    grid-template-columns: 1fr 1fr;
+  }
+  .pricingCards > *:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
 }
 
 /* ── Login prompt box ────────────────────────────────────── */
