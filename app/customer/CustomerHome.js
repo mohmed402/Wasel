@@ -8,16 +8,37 @@ import styles from './customer.module.css'
 import {
   HiSearch,
   HiChevronLeft,
-  HiShoppingCart, HiCreditCard, HiTruck,
+  HiShoppingCart, HiCreditCard, HiTruck, HiLink, HiArrowLeft,
 } from 'react-icons/hi'
-import { getBasket } from './basket-storage'
+import { getBasket, replaceSheinLinesFromCartShare } from './basket-storage'
+import SheinBasketLinkLoader from './SheinBasketLinkLoader'
 import CustomerSiteHeader from './CustomerSiteHeader'
+
+function buildSheinKey(it) {
+  return [it.productId, it.sku, it.variant].filter(Boolean).join('-') || String(it.name || '').slice(0, 40)
+}
+
+function mapApiItemToPreview(it, index) {
+  const base = {
+    productId: it.productId ?? null,
+    sku: it.sku != null ? String(it.sku) : '',
+    variant: it.variant || null,
+    name: it.name || 'منتج',
+    price: typeof it.price === 'number' ? it.price : parseFloat(it.price) || 0,
+    currency: it.currency || 'USD',
+    qty: Math.max(1, parseInt(it.qty ?? it.quantity, 10) || 1),
+    image: it.image || it.images?.[0],
+    images: it.images || (it.image ? [it.image] : []),
+  }
+  const sheinKey = `${buildSheinKey(base)}#${index}`
+  return { ...base, sheinKey, rowId: `row-${index}-${sheinKey}` }
+}
 
 const howToSteps = [
   {
     step: 1,
-    icon: HiShoppingCart,
-    text: 'جهّز سلة شي إن الخاصة بك، راجع منتجاتك واحصل على الإجمالي بكل سهولة ويسر.',
+    icon: HiLink,
+    text: 'الصق رابط مشاركة سلتك من تطبيق Shein مباشرةً في الحقل أدناه، وشاهد الأسعار بالدينار الليبي فوراً.',
   },
   {
     step: 2,
@@ -37,6 +58,13 @@ export default function CustomerPage() {
   const [trackRef, setTrackRef] = useState('')
   const [trackHint, setTrackHint] = useState('')
 
+  // Basket link state (now on hero)
+  const [basketLink, setBasketLink] = useState('')
+  const [basketLoading, setBasketLoading] = useState(false)
+  const [basketError, setBasketError] = useState('')
+  const [exchangeRate, setExchangeRate] = useState(6.0)
+  const [heroTab, setHeroTab] = useState('basket') // 'basket' | 'track'
+
   const [savedBasketItems, setSavedBasketItems] = useState([])
   const [activeTab, setActiveTab] = useState('home')
 
@@ -49,6 +77,13 @@ export default function CustomerPage() {
   }, [])
 
   useEffect(() => { refreshSavedBasket() }, [refreshSavedBasket])
+
+  useEffect(() => {
+    fetch('/api/exchange-rate')
+      .then((r) => r.json())
+      .then((d) => setExchangeRate(d.USD || 6.0))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     const r = searchParams.get('ref')?.trim()
@@ -84,6 +119,45 @@ export default function CustomerPage() {
     }
     setTrackHint('')
     router.push(`/customer/track?ref=${encodeURIComponent(ref)}`)
+  }
+
+  const handleFetchBasket = async () => {
+    const link = basketLink.trim()
+    if (!link || !link.includes('shein.com') || !link.includes('cart/share')) {
+      setBasketError('أدخل رابط مشاركة سلة Shein (يجب أن يحتوي على cart/share)')
+      return
+    }
+    setBasketError('')
+    setBasketLoading(true)
+    try {
+      let url = link
+      try {
+        const u = new URL(link)
+        if (u.hostname.includes('shein.com') && !u.searchParams.has('currency')) {
+          u.searchParams.set('currency', 'USD')
+          url = u.toString()
+        }
+      } catch (_) {}
+      const res = await fetch('/api/shein/cart-items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cartShareUrl: url }),
+        signal: AbortSignal.timeout(70000),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) {
+        setBasketError(data.error || data.message || 'فشل جلب السلة')
+        return
+      }
+      const lines = (data.items || []).map((it, i) => mapApiItemToPreview(it, i))
+      replaceSheinLinesFromCartShare({ cartShareUrl: url, lines })
+      refreshSavedBasket()
+      router.push('/customer/basket')
+    } catch (e) {
+      setBasketError(e.name === 'AbortError' ? 'انتهت المهلة' : 'حدث خطأ في الاتصال')
+    } finally {
+      setBasketLoading(false)
+    }
   }
 
   const u = (photoId, w = 800) =>
@@ -132,7 +206,7 @@ export default function CustomerPage() {
       />
 
       {/* ── HERO ── */}
-      <section className={styles.landingHero} aria-label="ترحيب">
+      <section id="basket-link-section" className={styles.landingHero} aria-label="ترحيب">
         <div className={styles.landingHeroBg}>
           <Image src="/customer-hero.jpg" alt="" fill priority className={styles.landingHeroBgImg} sizes="100vw" />
         </div>
@@ -158,30 +232,94 @@ export default function CustomerPage() {
             </span>
           </h1>
           <p className={styles.landingHeroSubtitle}>
-            لنبحث معاً عن أفضل طريقة لطلبك — تتبع، سلة Shein، وأسعار بالدينار الليبي.
+            أسرع طريقة لطلب منتجاتك من Shein إلى ليبيا — بالدينار الليبي.
           </p>
-          <div className={styles.landingHeroSearch}>
-            <input
-              type="text"
-              className={styles.landingHeroSearchInput}
-              placeholder="رقم الطلب (مثال: ORD-1234567890)"
-              value={trackRef}
-              onChange={(e) => {
-                setTrackRef(e.target.value)
-                if (trackHint) setTrackHint('')
-              }}
-              onKeyDown={(e) => e.key === 'Enter' && goToTrack()}
-            />
+
+          {/* Hero tab switcher */}
+          <div className={styles.heroTabSwitch}>
             <button
               type="button"
-              className={styles.landingHeroSearchBtn}
-              onClick={goToTrack}
-              aria-label="تتبع الطلب"
+              className={heroTab === 'basket' ? styles.heroTabActive : styles.heroTab}
+              onClick={() => setHeroTab('basket')}
             >
-              <HiSearch />
+              <HiShoppingCart aria-hidden style={{ fontSize: '0.95em' }} />
+              رابط سلة Shein
+            </button>
+            <button
+              type="button"
+              className={heroTab === 'track' ? styles.heroTabActive : styles.heroTab}
+              onClick={() => setHeroTab('track')}
+            >
+              <HiSearch aria-hidden style={{ fontSize: '0.95em' }} />
+              تتبع طلب
             </button>
           </div>
-          {trackHint && <p className={styles.trackHeroHint}>{trackHint}</p>}
+
+          {heroTab === 'basket' && (
+            <>
+              <div className={styles.landingHeroSearch}>
+                <input
+                  type="url"
+                  className={styles.landingHeroSearchInput}
+                  placeholder="الصق رابط مشاركة سلة Shein هنا..."
+                  value={basketLink}
+                  onChange={(e) => {
+                    setBasketLink(e.target.value)
+                    if (basketError) setBasketError('')
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && !basketLoading && handleFetchBasket()}
+                  dir="ltr"
+                />
+                <button
+                  type="button"
+                  className={styles.landingHeroSearchBtn}
+                  onClick={handleFetchBasket}
+                  disabled={basketLoading}
+                  aria-label="عرض السلة"
+                >
+                  {basketLoading ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
+                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                    </svg>
+                  ) : (
+                    <HiArrowLeft />
+                  )}
+                </button>
+              </div>
+              {basketError && <p className={styles.trackHeroHint} style={{ color: '#fca5a5' }}>{basketError}</p>}
+              {basketLoading && <SheinBasketLinkLoader />}
+              <p className={styles.heroBasketHint}>
+                <strong>كيف تحصل على الرابط؟</strong> افتح تطبيق Shein ← السلة ← مشاركة ← انسخ الرابط والصقه هنا
+              </p>
+            </>
+          )}
+
+          {heroTab === 'track' && (
+            <>
+              <div className={styles.landingHeroSearch}>
+                <input
+                  type="text"
+                  className={styles.landingHeroSearchInput}
+                  placeholder="رقم الطلب (مثال: ORD-1234567890)"
+                  value={trackRef}
+                  onChange={(e) => {
+                    setTrackRef(e.target.value)
+                    if (trackHint) setTrackHint('')
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && goToTrack()}
+                />
+                <button
+                  type="button"
+                  className={styles.landingHeroSearchBtn}
+                  onClick={goToTrack}
+                  aria-label="تتبع الطلب"
+                >
+                  <HiSearch />
+                </button>
+              </div>
+              {trackHint && <p className={styles.trackHeroHint}>{trackHint}</p>}
+            </>
+          )}
         </div>
       </section>
 

@@ -8,7 +8,9 @@ import {
   HiArrowRight,
   HiCheckCircle,
   HiX,
-  HiRefresh
+  HiRefresh,
+  HiTruck,
+  HiCurrencyDollar,
 } from 'react-icons/hi'
 
 // Supported currencies
@@ -20,6 +22,24 @@ const CURRENCIES = {
   TRY: { code: 'TRY', name: 'ليرة تركية', symbol: '₺' }
 }
 
+const PRICING_METHODS = [
+  {
+    id: 1,
+    label: 'الطريقة الأولى — شحن مجاني للزبون',
+    desc: 'الشحن مجاني على الزبون. الكوبون خاص بالإدارة (More Express).',
+  },
+  {
+    id: 2,
+    label: 'الطريقة الثانية — شحن مدفوع، الكوبون للزبون',
+    desc: 'الزبون يدفع تكلفة الشحن. الكوبون يُعطى للزبون ليستفيد منه.',
+  },
+  {
+    id: 3,
+    label: 'الطريقة الثالثة — شحن مدفوع، الكوبون لـ More Express',
+    desc: 'الزبون يدفع تكلفة الشحن. الكوبونات تبقى لـ More Express.',
+  },
+]
+
 export default function FinancialSettingsPage() {
   const [baseCurrency, setBaseCurrency] = useState('LYD')
   const [loading, setLoading] = useState(true)
@@ -27,8 +47,17 @@ export default function FinancialSettingsPage() {
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [saveError, setSaveError] = useState(null)
 
+  // Pricing system
+  const [pricingMethod, setPricingMethod] = useState(1)
+  const [shippingCost, setShippingCost] = useState(0)
+  const [exchangeRateDisplay, setExchangeRateDisplay] = useState(6.0)
+  const [pricingSaving, setPricingSaving] = useState(false)
+  const [pricingSuccess, setPricingSuccess] = useState(false)
+  const [pricingError, setPricingError] = useState(null)
+
   useEffect(() => {
     fetchSettings()
+    fetchPricingSettings()
   }, [])
 
   const fetchSettings = async () => {
@@ -45,6 +74,18 @@ export default function FinancialSettingsPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const fetchPricingSettings = async () => {
+    try {
+      const res = await fetch('/api/pricing-settings')
+      if (res.ok) {
+        const d = await res.json()
+        if (d.pricingMethod) setPricingMethod(d.pricingMethod)
+        if (typeof d.shippingCost === 'number') setShippingCost(d.shippingCost)
+        if (typeof d.exchangeRateDisplay === 'number') setExchangeRateDisplay(d.exchangeRateDisplay)
+      }
+    } catch (_) {}
   }
 
   const handleSave = async () => {
@@ -64,7 +105,6 @@ export default function FinancialSettingsPage() {
         throw new Error(error.error || 'Failed to update settings')
       }
 
-      // Verify the save by fetching the updated settings
       const verifyResponse = await fetch('/api/financial/settings')
       if (verifyResponse.ok) {
         const updatedSettings = await verifyResponse.json()
@@ -78,6 +118,29 @@ export default function FinancialSettingsPage() {
       setSaveError(error.message || 'حدث خطأ أثناء حفظ الإعدادات')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleSavePricing = async () => {
+    setPricingSaving(true)
+    setPricingError(null)
+    setPricingSuccess(false)
+    try {
+      const res = await fetch('/api/pricing-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pricingMethod, shippingCost: Number(shippingCost), exchangeRateDisplay: Number(exchangeRateDisplay) }),
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d.error || 'فشل الحفظ')
+      }
+      setPricingSuccess(true)
+      setTimeout(() => setPricingSuccess(false), 3000)
+    } catch (e) {
+      setPricingError(e.message)
+    } finally {
+      setPricingSaving(false)
     }
   }
 
@@ -261,6 +324,106 @@ export default function FinancialSettingsPage() {
               </div>
             </>
           )}
+        </div>
+      </div>
+
+      {/* ── Pricing Method Section ── */}
+      <div className={styles.section} style={{ marginTop: '2rem' }}>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>
+            <HiTruck style={{ marginInlineEnd: '0.5rem', verticalAlign: 'middle' }} />
+            نظام التسعير والشحن
+          </h2>
+        </div>
+        <div style={{ background: 'white', borderRadius: '12px', padding: '2rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          <p style={{ color: '#6B7280', marginBottom: '1.25rem', fontSize: '0.9rem', lineHeight: 1.6 }}>
+            اختر طريقة التسعير التي تنطبق على الطلبات القادمة من موقع العملاء.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+            {PRICING_METHODS.map((m) => (
+              <label
+                key={m.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '0.75rem',
+                  padding: '1rem',
+                  border: `2px solid ${pricingMethod === m.id ? '#16a34a' : '#e5e7eb'}`,
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  background: pricingMethod === m.id ? '#f0fdf4' : 'white',
+                  transition: 'border-color 0.2s, background 0.2s',
+                }}
+              >
+                <input
+                  type="radio"
+                  name="pricingMethod"
+                  value={m.id}
+                  checked={pricingMethod === m.id}
+                  onChange={() => setPricingMethod(m.id)}
+                  style={{ marginTop: '0.2rem', accentColor: '#16a34a' }}
+                />
+                <div>
+                  <div style={{ fontWeight: 700, marginBottom: '0.25rem' }}>{m.label}</div>
+                  <div style={{ fontSize: '0.85rem', color: '#6B7280', lineHeight: 1.5 }}>{m.desc}</div>
+                </div>
+              </label>
+            ))}
+          </div>
+
+          {pricingMethod !== 1 && (
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem' }}>
+                تكلفة الشحن (د.ل)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={shippingCost}
+                onChange={(e) => setShippingCost(e.target.value)}
+                style={{ padding: '0.65rem 1rem', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '1rem', width: '100%', maxWidth: '240px' }}
+              />
+            </div>
+          )}
+
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+              <HiCurrencyDollar />
+              سعر الدولار المعروض للزبون (د.ل لكل $1)
+            </label>
+            <p style={{ fontSize: '0.82rem', color: '#6B7280', marginBottom: '0.5rem' }}>
+              السعر الذي يُعرض للزبون عند احتساب إجمالي السلة بالدينار (مثال: 6 أو 6.25)
+            </p>
+            <input
+              type="number"
+              min="1"
+              step="0.25"
+              value={exchangeRateDisplay}
+              onChange={(e) => setExchangeRateDisplay(e.target.value)}
+              style={{ padding: '0.65rem 1rem', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '1rem', width: '100%', maxWidth: '240px' }}
+            />
+          </div>
+
+          {pricingSuccess && (
+            <div style={{ background: '#ECFDF5', border: '1px solid #16A34A', color: '#16A34A', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <HiCheckCircle /> تم حفظ إعدادات التسعير بنجاح
+            </div>
+          )}
+          {pricingError && (
+            <div style={{ background: '#FEF2F2', border: '1px solid #DC2626', color: '#DC2626', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <HiX /> {pricingError}
+            </div>
+          )}
+
+          <button
+            onClick={handleSavePricing}
+            disabled={pricingSaving}
+            style={{ padding: '0.75rem 1.5rem', border: 'none', borderRadius: '8px', background: pricingSaving ? '#9CA3AF' : '#16a34a', color: 'white', fontWeight: 600, cursor: pricingSaving ? 'not-allowed' : 'pointer', fontSize: '0.95rem' }}
+          >
+            {pricingSaving ? 'جاري الحفظ...' : 'حفظ إعدادات التسعير'}
+          </button>
         </div>
       </div>
 

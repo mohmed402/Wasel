@@ -431,6 +431,55 @@ font-family: 'Tajawal' !important;
   text-align: center;
 }
 
+/* ── Hero tab switcher ────────────────────────────────── */
+.heroTabSwitch {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1rem;
+  border: 1.5px solid rgba(255,255,255,0.14);
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(0,0,0,0.25);
+}
+.heroTab,
+.heroTabActive {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.65rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: background 0.2s, color 0.2s;
+}
+.heroTab {
+  background: transparent;
+  color: rgba(232,232,234,0.55);
+}
+.heroTab:hover {
+  background: rgba(255,255,255,0.06);
+  color: rgba(232,232,234,0.85);
+}
+.heroTabActive {
+  background: rgba(8,175,102,0.2);
+  color: #08af66;
+}
+
+.heroBasketHint {
+  margin: 0.75rem 0 0;
+  font-size: 0.78rem;
+  color: rgba(232,232,234,0.45);
+  text-align: center;
+  line-height: 1.55;
+}
+.heroBasketHint strong {
+  color: rgba(232,232,234,0.65);
+}
+
 /* ══════════════════════════════════════════════════════════
    CATEGORY TABS
    ══════════════════════════════════════════════════════════ */
@@ -2100,6 +2149,94 @@ font-family: 'Tajawal' !important;
   font-size: 0.88rem; font-weight: 700; text-decoration: none;
 }
 .basketBadge:hover { background: rgba(8,175,102,0.3); }
+
+/* ── Pricing banner ─────────────────────────────────────── */
+.pricingBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.75rem 1rem;
+  background: rgba(245,158,11,0.08);
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 10px;
+  font-size: 0.88rem;
+  color: #f59e0b;
+  margin-bottom: 1.25rem;
+}
+
+/* ── Login prompt box ────────────────────────────────────── */
+.loginPromptBox {
+  padding: 1rem 1.15rem;
+  background: rgba(8,175,102,0.06);
+  border: 1px solid rgba(8,175,102,0.25);
+  border-radius: 12px;
+  animation: slideInUp 0.25s ease both;
+}
+.loginPromptRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  font-size: 0.9rem;
+  color: rgba(232,232,234,0.85);
+  line-height: 1.5;
+}
+
+/* ── Saved address chips ─────────────────────────────────── */
+.savedAddressesList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.savedAddressChip {
+  padding: 0.55rem 0.9rem;
+  background: rgba(8,175,102,0.07);
+  border: 1px solid rgba(8,175,102,0.22);
+  border-radius: 8px;
+  color: rgba(232,232,234,0.75);
+  font-family: inherit;
+  font-size: 0.82rem;
+  text-align: start;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.savedAddressChip:hover {
+  background: rgba(8,175,102,0.15);
+  border-color: rgba(8,175,102,0.45);
+  color: #fff;
+}
+
+/* ── Pricing summary ─────────────────────────────────────── */
+.pricingSummary {
+  margin: 1rem 0;
+  padding: 0.85rem 1rem;
+  background: rgba(0,0,0,0.18);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+}
+.pricingSummaryRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  color: rgba(232,232,234,0.65);
+  padding: 0.3rem 0;
+}
+.pricingSummaryNote {
+  font-size: 0.78rem;
+  color: #08af66;
+  padding: 0.35rem 0;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  margin-top: 0.25rem;
+}
+.pricingSummaryTotal {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+  padding: 0.5rem 0 0;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  margin-top: 0.25rem;
+}
 
 /* ══════════════════════════════════════════════════════════
    FOOTER

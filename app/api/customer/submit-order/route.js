@@ -73,8 +73,9 @@ export async function POST(request) {
       address,
       notes,
       items = [],
-      exchangeRateUsdLyd = 5.2,
+      exchangeRateUsdLyd = 6.0,
       basket_link: basketLinkBody,
+      pricingMethod = 1,
     } = body
 
     const name = String(customerName || '').trim()
@@ -106,8 +107,15 @@ export async function POST(request) {
 
     const deliveryBlock = [`المدينة: ${cityTrim}`, `العنوان: ${addressTrim}`]
       .join('\n')
+    const pricingLabel = pricingMethod === 2
+      ? 'طريقة التسعير: شحن مدفوع — الكوبون للزبون'
+      : pricingMethod === 3
+        ? 'طريقة التسعير: شحن مدفوع — الكوبون لـ More Express'
+        : 'طريقة التسعير: شحن مجاني — الكوبون للإدارة'
+
     const notesBlock = [
       '[طلب من موقع العملاء]',
+      pricingLabel,
       deliveryBlock,
       notes && String(notes).trim() ? `ملاحظات: ${String(notes).trim()}` : null,
     ]

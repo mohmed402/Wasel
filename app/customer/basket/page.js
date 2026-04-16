@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import styles from '../customer.module.css'
 import CustomerSiteHeader from '../CustomerSiteHeader'
@@ -11,27 +11,17 @@ import {
   updateBasketQuantity,
   updateSheinQuantity,
 } from '../basket-storage'
-import { HiX, HiTrash, HiCheckCircle, HiChevronLeft, HiShoppingBag } from 'react-icons/hi'
-
-function extractProductIdFromSheinUrl(input) {
-  const s = (input || '').trim()
-  if (!s) return null
-  const m =
-    s.match(/-p-(\d+)/i) ||
-    s.match(/\/product[s]?\/?(\d+)/i) ||
-    s.match(/goods_id[=:](\d+)/i) ||
-    s.match(/(\d{6,})/)
-  return m ? m[1] : null
-}
+import { HiX, HiTrash, HiCheckCircle, HiChevronLeft, HiShoppingBag, HiUser, HiLockClosed } from 'react-icons/hi'
 
 export default function CustomerBasketPage() {
   const [items, setItems] = useState([])
-  const [exchangeRate, setExchangeRate] = useState(5.2)
+  const [exchangeRate, setExchangeRate] = useState(6.0)
 
   const [checkoutPhase, setCheckoutPhase] = useState('idle')
   const [submittedRef, setSubmittedRef] = useState(null)
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
+  const [password, setPassword] = useState('')
   const [email, setEmail] = useState('')
   const [whatsApp, setWhatsApp] = useState('')
   const [city, setCity] = useState('')
@@ -40,6 +30,22 @@ export default function CustomerBasketPage() {
   const [checkoutFieldError, setCheckoutFieldError] = useState('')
   const [submitLoading, setSubmitLoading] = useState(false)
   const [submitError, setSubmitError] = useState('')
+
+  // Phone lookup / optional login
+  const [phoneChecked, setPhoneChecked] = useState(false)
+  const [phoneLoading, setPhoneLoading] = useState(false)
+  const [existingCustomer, setExistingCustomer] = useState(null) // { name, address, ... }
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false)
+  const [loginLoading, setLoginLoading] = useState(false)
+  const [loggedIn, setLoggedIn] = useState(false)
+  const [loginError, setLoginError] = useState('')
+  const [savedAddresses, setSavedAddresses] = useState([])
+
+  // Pricing method selected by admin (fetched from settings or default)
+  const [pricingMethod, setPricingMethod] = useState(1)
+  const [shippingCost, setShippingCost] = useState(0)
+
+  const phoneInputRef = useRef(null)
 
   const refresh = useCallback(() => {
     setItems(getBasket().items)
@@ -52,7 +58,20 @@ export default function CustomerBasketPage() {
   useEffect(() => {
     fetch('/api/exchange-rate')
       .then((r) => r.json())
-      .then((d) => setExchangeRate(d.USD || 5.2))
+      .then((d) => {
+        setExchangeRate(d.USD || 6.0)
+      })
+      .catch(() => {})
+  }, [])
+
+  // Fetch pricing method from settings
+  useEffect(() => {
+    fetch('/api/pricing-settings')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.pricingMethod) setPricingMethod(d.pricingMethod)
+        if (typeof d.shippingCost === 'number') setShippingCost(d.shippingCost)
+      })
       .catch(() => {})
   }, [])
 
@@ -62,6 +81,80 @@ export default function CustomerBasketPage() {
       setSubmittedRef(null)
     }
   }, [checkoutPhase, submittedRef, items.length])
+
+  // Phone auto-lookup after 10 digits
+  useEffect(() => {
+    const digits = phone.replace(/\D/g, '')
+    if (digits.length >= 10 && !phoneChecked && !phoneLoading) {
+      lookupPhone(phone)
+    }
+  }, [phone]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const lookupPhone = async (rawPhone) => {
+    const p = rawPhone.replace(/\s+/g, '').trim()
+    if (p.length < 8) return
+    setPhoneLoading(true)
+    try {
+      const res = await fetch(`/api/customers/lookup?phone=${encodeURIComponent(p)}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.found) {
+          setExistingCustomer(data.customer)
+          setShowLoginPrompt(true)
+          setPhoneChecked(true)
+        } else {
+          setPhoneChecked(true)
+          setShowLoginPrompt(false)
+          setExistingCustomer(null)
+        }
+      }
+    } catch (_) {
+      // silent
+    } finally {
+      setPhoneLoading(false)
+    }
+  }
+
+  const handleLoginWithPassword = async () => {
+    if (!password.trim()) {
+      setLoginError('أدخل كلمة المرور')
+      return
+    }
+    setLoginLoading(true)
+    setLoginError('')
+    try {
+      const res = await fetch('/api/customers/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phone.trim(), password: password.trim() }),
+      })
+      const data = await res.json()
+      if (res.ok && data.ok) {
+        setLoggedIn(true)
+        setShowLoginPrompt(false)
+        setFullName(data.customer.name || fullName)
+        if (data.customer.address) {
+          const addr = data.customer.address || ''
+          const lines = addr.split('\n').filter(Boolean)
+          const cityLine = lines.find((l) => l.startsWith('المدينة:'))
+          const addrLine = lines.find((l) => l.startsWith('العنوان:'))
+          if (cityLine) setCity(cityLine.replace('المدينة:', '').trim())
+          if (addrLine) setAddressLine(addrLine.replace('العنوان:', '').trim())
+        }
+        setSavedAddresses(data.customer.saved_addresses || [])
+      } else {
+        setLoginError(data.error || 'كلمة المرور غير صحيحة')
+      }
+    } catch (_) {
+      setLoginError('حدث خطأ في الاتصال')
+    } finally {
+      setLoginLoading(false)
+    }
+  }
+
+  const skipLogin = () => {
+    setShowLoginPrompt(false)
+  }
 
   const goCheckoutContact = () => {
     setCheckoutFieldError('')
@@ -128,6 +221,7 @@ export default function CustomerBasketPage() {
           notes: orderNotes.trim() || undefined,
           items: snapshot,
           exchangeRateUsdLyd: exchangeRate,
+          pricingMethod,
           ...(basket_link ? { basket_link } : {}),
         }),
       })
@@ -143,11 +237,15 @@ export default function CustomerBasketPage() {
       setCheckoutPhase('success')
       setFullName('')
       setPhone('')
+      setPassword('')
       setEmail('')
       setWhatsApp('')
       setCity('')
       setAddressLine('')
       setOrderNotes('')
+      setPhoneChecked(false)
+      setExistingCustomer(null)
+      setLoggedIn(false)
     } catch {
       setSubmitError('حدث خطأ في الاتصال')
     } finally {
@@ -161,7 +259,8 @@ export default function CustomerBasketPage() {
   const lineTotalLyd = (item) =>
     (item.price || 0) * (item.quantity || 1) * (item.currency === 'LYD' ? 1 : exchangeRate)
 
-  const totalLyd = items.reduce((s, i) => s + lineTotalLyd(i), 0)
+  const subtotalLyd = items.reduce((s, i) => s + lineTotalLyd(i), 0)
+  const totalLyd = subtotalLyd + (pricingMethod !== 1 ? shippingCost : 0)
   const unitCount = items.reduce((n, i) => n + (i.quantity || 0), 0)
 
   const bumpQuantity = (item, delta) => {
@@ -174,13 +273,28 @@ export default function CustomerBasketPage() {
     refresh()
   }
 
+  const pricingLabel = () => {
+    if (pricingMethod === 2) return `شحن مدفوع (${formatLyd(shippingCost)} د.ل) — الكوبون للزبون`
+    if (pricingMethod === 3) return `شحن مدفوع (${formatLyd(shippingCost)} د.ل) — الكوبون لـ MORE Express`
+    return 'شحن مجاني — الكوبون للإدارة'
+  }
+
   return (
     <div className={styles.page}>
       <CustomerSiteHeader basketCount={unitCount} />
 
       <div className={styles.content}>
         <h1 className={styles.productListTitle}>سلة المشتريات</h1>
-        <p className={styles.basketPageIntro}>هنا تظهر فقط المنتجات التي قمت بإضافتها إلى السلة.</p>
+
+        {/* Pricing method info banner */}
+        {pricingMethod !== 1 && (
+          <div className={styles.pricingBanner}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span>{pricingLabel()}</span>
+          </div>
+        )}
 
         {checkoutPhase === 'success' && submittedRef && (
           <section className={styles.checkoutSuccess} aria-live="polite">
@@ -215,7 +329,11 @@ export default function CustomerBasketPage() {
             <Link href="/customer/products" className={styles.headerNavLink}>
               قائمة المنتجات
             </Link>{' '}
-            أو أضف عناصر من Shein بالأعلى.
+            أو أضف عناصر من{' '}
+            <Link href="/" className={styles.headerNavLink}>
+              الصفحة الرئيسية
+            </Link>
+            .
           </div>
         ) : items.length > 0 ? (
           <section className={styles.basketSection} aria-label="محتويات السلة">
@@ -231,7 +349,6 @@ export default function CustomerBasketPage() {
                 onClick={() => {
                   clearBasket()
                   refresh()
-                  setImportMessage('')
                 }}
               >
                 <HiTrash style={{ verticalAlign: 'middle', marginInlineEnd: '0.25rem' }} />
@@ -316,9 +433,23 @@ export default function CustomerBasketPage() {
                 })}
               </ul>
               <div className={styles.totalRow}>
-                <span className={styles.totalLabel}>إجمالي السلة بالدينار الليبي</span>
-                <span className={styles.totalAmount}>{formatLyd(totalLyd)} د.ل</span>
+                <span className={styles.totalLabel}>
+                  {pricingMethod !== 1 ? 'المجموع الفرعي' : 'إجمالي السلة بالدينار الليبي'}
+                </span>
+                <span className={styles.totalAmount}>{formatLyd(subtotalLyd)} د.ل</span>
               </div>
+              {pricingMethod !== 1 && shippingCost > 0 && (
+                <div className={styles.totalRow} style={{ marginTop: '0.5rem', background: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.3)' }}>
+                  <span className={styles.totalLabel}>تكلفة الشحن</span>
+                  <span className={styles.totalAmount} style={{ color: '#f59e0b' }}>{formatLyd(shippingCost)} د.ل</span>
+                </div>
+              )}
+              {pricingMethod !== 1 && (
+                <div className={styles.totalRow} style={{ marginTop: '0.5rem' }}>
+                  <span className={styles.totalLabel} style={{ fontWeight: 800 }}>الإجمالي</span>
+                  <span className={styles.totalAmount}>{formatLyd(totalLyd)} د.ل</span>
+                </div>
+              )}
             </div>
           </section>
         ) : null}
@@ -358,6 +489,88 @@ export default function CustomerBasketPage() {
                         <legend className={styles.checkoutLegend}>بيانات التواصل</legend>
                         <div className={styles.checkoutGrid}>
                           <div className={`${styles.checkoutField} ${styles.checkoutFieldFull}`}>
+                            <label className={styles.checkoutLabel} htmlFor="co-phone">
+                              رقم الهاتف <span style={{ color: '#f87171' }}>*</span>
+                            </label>
+                            <div style={{ position: 'relative' }}>
+                              <input
+                                id="co-phone"
+                                ref={phoneInputRef}
+                                className={styles.checkoutInput}
+                                type="tel"
+                                dir="ltr"
+                                value={phone}
+                                onChange={(e) => {
+                                  setPhone(e.target.value)
+                                  setPhoneChecked(false)
+                                  setShowLoginPrompt(false)
+                                  setExistingCustomer(null)
+                                  setLoggedIn(false)
+                                }}
+                                autoComplete="tel"
+                                placeholder="09xxxxxxxx"
+                              />
+                              {phoneLoading && (
+                                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#08af66', fontSize: '0.8rem' }}>
+                                  جاري التحقق...
+                                </span>
+                              )}
+                              {loggedIn && (
+                                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#08af66', fontSize: '0.8rem' }}>
+                                  ✓ تم تسجيل الدخول
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Optional login prompt */}
+                          {showLoginPrompt && existingCustomer && !loggedIn && (
+                            <div className={`${styles.checkoutField} ${styles.checkoutFieldFull}`}>
+                              <div className={styles.loginPromptBox}>
+                                <div className={styles.loginPromptRow}>
+                                  <HiUser style={{ color: '#08af66', fontSize: '1.1rem', flexShrink: 0 }} aria-hidden />
+                                  <span>
+                                    مرحباً <strong>{existingCustomer.name}</strong>! هل تريد تسجيل الدخول لاستخدام بياناتك المحفوظة؟
+                                  </span>
+                                </div>
+                                <div className={styles.checkoutField} style={{ marginTop: '0.75rem' }}>
+                                  <label className={styles.checkoutLabel} htmlFor="co-pass">كلمة المرور (اختياري)</label>
+                                  <input
+                                    id="co-pass"
+                                    className={styles.checkoutInput}
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleLoginWithPassword()}
+                                    placeholder="أدخل كلمة المرور للدخول..."
+                                  />
+                                  {loginError && <span style={{ color: '#fca5a5', fontSize: '0.8rem' }}>{loginError}</span>}
+                                </div>
+                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.65rem' }}>
+                                  <button
+                                    type="button"
+                                    className={styles.checkoutPrimaryBtn}
+                                    onClick={handleLoginWithPassword}
+                                    disabled={loginLoading}
+                                    style={{ flex: 1 }}
+                                  >
+                                    <HiLockClosed style={{ verticalAlign: 'middle', marginInlineEnd: '0.3rem' }} />
+                                    {loginLoading ? 'جاري...' : 'دخول'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={styles.checkoutBackBtn}
+                                    onClick={skipLogin}
+                                    style={{ flex: 1 }}
+                                  >
+                                    تخطي
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className={`${styles.checkoutField} ${styles.checkoutFieldFull}`}>
                             <label className={styles.checkoutLabel} htmlFor="co-name">
                               الاسم الكامل <span style={{ color: '#f87171' }}>*</span>
                             </label>
@@ -367,20 +580,6 @@ export default function CustomerBasketPage() {
                               value={fullName}
                               onChange={(e) => setFullName(e.target.value)}
                               autoComplete="name"
-                            />
-                          </div>
-                          <div className={styles.checkoutField}>
-                            <label className={styles.checkoutLabel} htmlFor="co-phone">
-                              رقم الهاتف <span style={{ color: '#f87171' }}>*</span>
-                            </label>
-                            <input
-                              id="co-phone"
-                              className={styles.checkoutInput}
-                              type="tel"
-                              dir="ltr"
-                              value={phone}
-                              onChange={(e) => setPhone(e.target.value)}
-                              autoComplete="tel"
                             />
                           </div>
                           <div className={styles.checkoutField}>
@@ -428,6 +627,24 @@ export default function CustomerBasketPage() {
                     <>
                       <fieldset className={styles.checkoutFieldset}>
                         <legend className={styles.checkoutLegend}>عنوان التوصيل داخل ليبيا</legend>
+                        {savedAddresses.length > 0 && (
+                          <div className={styles.savedAddressesList} style={{ marginBottom: '1rem' }}>
+                            <p className={styles.checkoutLabel} style={{ marginBottom: '0.5rem' }}>عناوين محفوظة:</p>
+                            {savedAddresses.map((addr, i) => (
+                              <button
+                                key={i}
+                                type="button"
+                                className={styles.savedAddressChip}
+                                onClick={() => {
+                                  setCity(addr.city || '')
+                                  setAddressLine(addr.address || '')
+                                }}
+                              >
+                                {addr.city} — {(addr.address || '').slice(0, 30)}...
+                              </button>
+                            ))}
+                          </div>
+                        )}
                         <div className={styles.checkoutGrid}>
                           <div className={styles.checkoutField}>
                             <label className={styles.checkoutLabel} htmlFor="co-city">
@@ -467,6 +684,30 @@ export default function CustomerBasketPage() {
                           </div>
                         </div>
                       </fieldset>
+
+                      {/* Pricing method summary */}
+                      <div className={styles.pricingSummary}>
+                        <div className={styles.pricingSummaryRow}>
+                          <span>المجموع</span>
+                          <span>{formatLyd(subtotalLyd)} د.ل</span>
+                        </div>
+                        {pricingMethod !== 1 && shippingCost > 0 && (
+                          <div className={styles.pricingSummaryRow}>
+                            <span>الشحن</span>
+                            <span style={{ color: '#f59e0b' }}>{formatLyd(shippingCost)} د.ل</span>
+                          </div>
+                        )}
+                        {pricingMethod === 2 && (
+                          <div className={styles.pricingSummaryNote}>
+                            ستحصل على كوبون خصم من Shein بعد تأكيد الطلب
+                          </div>
+                        )}
+                        <div className={styles.pricingSummaryTotal}>
+                          <span>الإجمالي</span>
+                          <span>{formatLyd(totalLyd)} د.ل</span>
+                        </div>
+                      </div>
+
                       <div className={styles.checkoutActions}>
                         <button type="button" className={styles.checkoutBackBtn} onClick={goBackToContact}>
                           رجوع

@@ -8,13 +8,16 @@ import { financialSettings } from '../../../server/supabase'
  */
 export async function GET() {
   try {
-    let rateUsdLyd = parseFloat(process.env.EXCHANGE_RATE_USD_LYD || '0') || 9.2
+    let rateUsdLyd = parseFloat(process.env.EXCHANGE_RATE_USD_LYD || '0') || 6.0
 
     try {
       const settings = await financialSettings.get()
-      const rates = settings?.settings_json?.exchangeRates
-      if (rates && typeof rates.USD === 'number') {
-        rateUsdLyd = rates.USD
+      const s = settings?.settings_json
+      // Prefer the customer-facing display rate if set, then exchangeRates.USD
+      if (s && typeof s.exchangeRateDisplay === 'number') {
+        rateUsdLyd = s.exchangeRateDisplay
+      } else if (s?.exchangeRates && typeof s.exchangeRates.USD === 'number') {
+        rateUsdLyd = s.exchangeRates.USD
       }
     } catch (e) {
       // use default
@@ -28,7 +31,7 @@ export async function GET() {
   } catch (error) {
     console.error('Exchange rate error:', error)
     return NextResponse.json(
-      { USD: 9.2, base: 'LYD' },
+      { USD: 6.0, base: 'LYD' },
       { status: 200 }
     )
   }
