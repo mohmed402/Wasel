@@ -284,24 +284,35 @@
   flex-direction: column;
   justify-content: center;
   gap: 5px;
-  width: 42px;
-  height: 42px;
-  background: var(--site-surface2);
-  border: 1px solid var(--site-border);
+  width: 44px;
+  height: 44px;
+  background: rgba(0,230,118,0.08);
+  border: 1.5px solid rgba(0,230,118,0.35);
   border-radius: 10px;
   cursor: pointer;
   padding: 11px 10px;
   flex-shrink: 0;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.hamburger:hover {
+  background: rgba(0,230,118,0.16);
+  border-color: rgba(0,230,118,0.55);
 }
 
 .hamburger span {
   display: block;
   height: 2px;
-  background: var(--site-muted);
+  background: var(--site-green);
   border-radius: 2px;
   transition:
     transform 0.3s,
     opacity 0.3s;
+}
+
+.hamburgerOpen {
+  background: rgba(0,230,118,0.18);
+  border-color: var(--site-green);
 }
 
 .hamburgerOpen span:nth-child(1) {
@@ -651,6 +662,29 @@
 
 .mobilePromoBanner:hover {
   color: #ff8f66;
+}
+
+.mobileSheinCta {
+  margin: 0 14px 8px;
+  background: rgba(0, 230, 118, 0.08);
+  border: 1px solid rgba(0, 230, 118, 0.3);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--site-green);
+  cursor: pointer;
+  text-decoration: none;
+  font-family: inherit;
+  text-align: right;
+  transition: background 0.2s;
+}
+
+.mobileSheinCta:hover {
+  background: rgba(0, 230, 118, 0.15);
 }
 
 .mobileNav {

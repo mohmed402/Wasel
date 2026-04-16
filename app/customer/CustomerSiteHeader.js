@@ -367,6 +367,15 @@ export default function CustomerSiteHeader({
           عروض اليوم – خصومات تصل لـ 70%
         </button>
 
+        {/* Quick basket link CTA */}
+        <Link href="/#basket-link-section" className={styles.mobileSheinCta} onClick={closeMenu}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M10 13a5 5 0 0 0 7.54.54l1.92-1.92a5 5 0 0 0-7.07-7.07L11.5 5"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54L4.54 12.38a5 5 0 0 0 7.07 7.07L12.5 19"/>
+          </svg>
+          الصق رابط سلة Shein للطلب
+        </Link>
+
         <nav className={styles.mobileNav} aria-label="قائمة الجوال">
           <Link
             href="/"
