@@ -1,41 +1,25 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../server/supabase'
+import { requireCustomerAuth } from '../_auth'
 
 export const dynamic = 'force-dynamic'
-
-function getTokenFromRequest(request) {
-  const auth = request.headers.get('Authorization') || ''
-  if (auth.startsWith('Bearer ')) return auth.slice(7).trim()
-  return null
-}
-
-async function getCustomerFromToken(token) {
-  const { data } = await supabaseAdmin
-    .from('customer')
-    .select('id, is_active')
-    .eq('session_token', token)
-    .gt('session_expires_at', new Date().toISOString())
-    .maybeSingle()
-  return data
-}
 
 /**
  * GET /api/customer/orders
  * Returns all orders for the authenticated customer.
- * Authorization: Bearer <session_token>
+ * Authorization: Bearer <supabase_access_token>
  */
 export async function GET(request) {
   if (!supabaseAdmin) {
     return NextResponse.json({ error: 'الخدمة غير متاحة' }, { status: 503 })
   }
 
-  const token = getTokenFromRequest(request)
-  if (!token) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
-
   try {
-    const customer = await getCustomerFromToken(token)
-    if (!customer) return NextResponse.json({ error: 'الجلسة غير صالحة' }, { status: 401 })
-    if (!customer.is_active) return NextResponse.json({ error: 'الحساب غير نشط' }, { status: 403 })
+    const auth = await requireCustomerAuth(request)
+    if (auth.error) {
+      return NextResponse.json({ error: auth.error.message }, { status: auth.error.status })
+    }
+    const { customer } = auth
 
     const { data: orders, error } = await supabaseAdmin
       .from('orders')

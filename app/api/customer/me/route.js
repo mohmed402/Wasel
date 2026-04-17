@@ -1,56 +1,30 @@
 import { NextResponse } from 'next/server'
-import { supabaseAdmin } from '../../../../server/supabase'
+import { requireCustomerAuth } from '../_auth'
 
 export const dynamic = 'force-dynamic'
-
-function getTokenFromRequest(request) {
-  const auth = request.headers.get('Authorization') || ''
-  if (auth.startsWith('Bearer ')) return auth.slice(7).trim()
-  return null
-}
 
 /**
  * GET /api/customer/me
  * Returns the authenticated customer's profile.
- * Authorization: Bearer <session_token>
+ * Authorization: Bearer <supabase_access_token>
  */
 export async function GET(request) {
-  if (!supabaseAdmin) {
-    return NextResponse.json({ error: 'الخدمة غير متاحة' }, { status: 503 })
-  }
-
-  const token = getTokenFromRequest(request)
-  if (!token) {
-    return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
-  }
-
   try {
-    const { data, error } = await supabaseAdmin
-      .from('customer')
-      .select('id, name, phone, email, address, wh_account, wallet_balance, wallet_currency, is_active, created_at')
-      .eq('session_token', token)
-      .gt('session_expires_at', new Date().toISOString())
-      .maybeSingle()
-
-    if (error || !data) {
-      return NextResponse.json({ error: 'الجلسة غير صالحة أو منتهية' }, { status: 401 })
+    const auth = await requireCustomerAuth(request)
+    if (auth.error) {
+      return NextResponse.json({ error: auth.error.message }, { status: auth.error.status })
     }
-
-    if (!data.is_active) {
-      return NextResponse.json({ error: 'الحساب غير نشط' }, { status: 403 })
-    }
+    const { customer } = auth
 
     return NextResponse.json({
       customer: {
-        id: data.id,
-        name: data.name,
-        phone: data.phone,
-        email: data.email,
-        address: data.address,
-        whatsApp: data.wh_account,
-        wallet_balance: data.wallet_balance ?? 0,
-        wallet_currency: data.wallet_currency || 'LYD',
-        created_at: data.created_at,
+        id: customer.id,
+        name: customer.name,
+        phone: customer.phone,
+        email: customer.email,
+        address: customer.address,
+        whatsApp: customer.wh_account,
+        created_at: customer.created_at,
       },
     })
   } catch (e) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import CustomerSiteHeader from '../CustomerSiteHeader'
@@ -52,6 +52,8 @@ export default function CustomerDashboardPage() {
   const [profileError, setProfileError] = useState('')
 
   const [basketCount, setBasketCount] = useState(0)
+  const ordersFetchInFlight = useRef(false)
+  const walletFetchInFlight = useRef(false)
 
   useEffect(() => {
     const s = getSession()
@@ -81,7 +83,8 @@ export default function CustomerDashboardPage() {
   }, [session, fetchProfile])
 
   const fetchOrders = useCallback(async () => {
-    if (loadingOrders) return
+    if (ordersFetchInFlight.current) return
+    ordersFetchInFlight.current = true
     setLoadingOrders(true)
     try {
       const res = await fetch('/api/customer/orders', { headers: authHeaders() })
@@ -89,12 +92,14 @@ export default function CustomerDashboardPage() {
       const data = await res.json()
       if (res.ok) setOrders(data.orders || [])
     } catch {} finally {
+      ordersFetchInFlight.current = false
       setLoadingOrders(false)
     }
-  }, [router, loadingOrders])
+  }, [router])
 
   const fetchWallet = useCallback(async () => {
-    if (loadingWallet) return
+    if (walletFetchInFlight.current) return
+    walletFetchInFlight.current = true
     setLoadingWallet(true)
     try {
       const res = await fetch('/api/customer/wallet', { headers: authHeaders() })
@@ -102,16 +107,20 @@ export default function CustomerDashboardPage() {
       const data = await res.json()
       if (res.ok) { setWallet(data.wallet); setWalletTxs(data.transactions || []) }
     } catch {} finally {
+      walletFetchInFlight.current = false
       setLoadingWallet(false)
     }
-  }, [router, loadingWallet])
+  }, [router])
 
   useEffect(() => {
-    if (tab === 'orders' && orders.length === 0) fetchOrders()
-    if (tab === 'wallet' && !wallet) fetchWallet()
-    if (tab === 'overview' && orders.length === 0) fetchOrders()
-    if (tab === 'overview' && !wallet) fetchWallet()
-  }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!session) return
+    if (tab === 'orders' || tab === 'overview') {
+      if (orders.length === 0) fetchOrders()
+    }
+    if (tab === 'wallet' || tab === 'overview') {
+      if (!wallet) fetchWallet()
+    }
+  }, [session, tab, orders.length, wallet, fetchOrders, fetchWallet])
 
   const handleLogout = () => {
     clearSession()

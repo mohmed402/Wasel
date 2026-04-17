@@ -1,28 +1,13 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../server/supabase'
+import { requireCustomerAuth } from '../_auth'
 
 export const dynamic = 'force-dynamic'
-
-function getTokenFromRequest(request) {
-  const auth = request.headers.get('Authorization') || ''
-  if (auth.startsWith('Bearer ')) return auth.slice(7).trim()
-  return null
-}
-
-async function getCustomerFromToken(token) {
-  const { data } = await supabaseAdmin
-    .from('customer')
-    .select('id, is_active, wallet_balance, wallet_currency')
-    .eq('session_token', token)
-    .gt('session_expires_at', new Date().toISOString())
-    .maybeSingle()
-  return data
-}
 
 /**
  * GET /api/customer/wallet
  * Returns the wallet balance and recent transactions for the authenticated customer.
- * Authorization: Bearer <session_token>
+ * Authorization: Bearer <supabase_access_token>
  *
  * Falls back gracefully if the customer_wallets table doesn't exist yet.
  */
@@ -31,42 +16,70 @@ export async function GET(request) {
     return NextResponse.json({ error: 'الخدمة غير متاحة' }, { status: 503 })
   }
 
-  const token = getTokenFromRequest(request)
-  if (!token) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
-
   try {
-    const customer = await getCustomerFromToken(token)
-    if (!customer) return NextResponse.json({ error: 'الجلسة غير صالحة' }, { status: 401 })
-    if (!customer.is_active) return NextResponse.json({ error: 'الحساب غير نشط' }, { status: 403 })
+    const auth = await requireCustomerAuth(request)
+    if (auth.error) {
+      return NextResponse.json({ error: auth.error.message }, { status: auth.error.status })
+    }
+    const { customer } = auth
+    const customerId = Number(customer.id)
 
-    // Balance — prefer dedicated wallet table, fall back to customer column
+    // Balance comes only from dedicated wallet table.
     let walletRow = null
     let transactions = []
 
-    try {
-      const { data: w } = await supabaseAdmin
+    async function fetchWalletRow() {
+      const { data, error } = await supabaseAdmin
         .from('customer_wallets')
         .select('id, balance, currency, is_active, updated_at')
-        .eq('customer_id', customer.id)
+        .eq('customer_id', customerId)
         .maybeSingle()
+      return { data, error }
+    }
+
+    try {
+      let { data: w } = await fetchWalletRow()
 
       if (w) {
         walletRow = w
+      } else {
+        // Ensure every authenticated customer has a wallet row.
+        const { data: createdWallet, error: createWalletErr } = await supabaseAdmin
+          .from('customer_wallets')
+          .insert([{
+            customer_id: customerId,
+            balance: 0,
+            currency: 'LYD',
+            is_active: true,
+          }])
+          .select('id, balance, currency, is_active, updated_at')
+          .single()
+
+        if (!createWalletErr && createdWallet) {
+          walletRow = createdWallet
+        } else if (createWalletErr?.code === '23505') {
+          // Concurrent request inserted first — load existing row.
+          const refetch = await fetchWalletRow()
+          walletRow = refetch.data || null
+        }
+      }
+
+      if (walletRow) {
         const { data: txs } = await supabaseAdmin
           .from('wallet_transactions')
           .select('id, tx_type, amount, balance_after, reference_id, notes, created_at')
-          .eq('customer_id', customer.id)
+          .eq('customer_id', customerId)
           .order('created_at', { ascending: false })
           .limit(30)
 
         transactions = txs || []
       }
     } catch {
-      // wallet tables not yet applied — use customer column fallback
+      // wallet tables not yet applied
     }
 
-    const balance = walletRow?.balance ?? customer.wallet_balance ?? 0
-    const currency = walletRow?.currency ?? customer.wallet_currency ?? 'LYD'
+    const balance = walletRow?.balance ?? 0
+    const currency = walletRow?.currency ?? 'LYD'
 
     return NextResponse.json({
       wallet: {

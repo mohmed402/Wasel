@@ -10,10 +10,15 @@ function normalizePhone(p) {
     .trim()
 }
 
+function isMissingCustomerAuthColumns(error) {
+  const msg = String(error?.message || '')
+  return error?.code === '42703' && (msg.includes('customer.auth_user_id') || msg.includes('customer.auth_email'))
+}
+
 /**
  * GET /api/customers/lookup?phone=09xxxxxxxx
  * Check if a customer record exists for this phone number (for optional login prompt).
- * Returns { found: bool, customer: { name, address } } — never returns sensitive data.
+ * Returns { found: bool, customer: { name, address, hasPassword } }.
  */
 export async function GET(request) {
   if (!supabaseAdmin) {
@@ -31,9 +36,13 @@ export async function GET(request) {
   try {
     const { data, error } = await supabaseAdmin
       .from('customer')
-      .select('id, name, address, email, has_password')
+      .select('id, name, address, email, auth_user_id, auth_email')
       .eq('phone', phone)
       .maybeSingle()
+
+    if (isMissingCustomerAuthColumns(error)) {
+      return NextResponse.json({ found: false, migration_required: true }, { status: 200 })
+    }
 
     if (error || !data) {
       return NextResponse.json({ found: false }, { status: 200 })
@@ -45,7 +54,7 @@ export async function GET(request) {
         id: data.id,
         name: data.name,
         address: data.address,
-        hasPassword: !!data.has_password,
+        hasPassword: !!(data.auth_user_id || data.auth_email),
       },
     })
   } catch (e) {

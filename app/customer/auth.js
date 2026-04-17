@@ -1,10 +1,12 @@
 /**
  * Customer auth session — stored in localStorage as 'wasel_customer_session'.
- * Shape: { id, name, phone, email, address, wallet_balance, wallet_currency, token, expires_at }
+ * Shape: {
+ *   id, name, phone, email, address,
+ *   token, refresh_token, expires_at, auth_user_id, role
+ * }
  *
- * No server-side JWT. The session token is a random string issued by the login API
- * and stored server-side per customer (column: session_token, session_expires_at).
- * Every customer API call sends it as a Bearer token.
+ * Uses Supabase Auth access_token as bearer token.
+ * Every customer API call sends Authorization: Bearer <token>.
  */
 
 const SESSION_KEY = 'wasel_customer_session'
@@ -16,8 +18,9 @@ export function getSession() {
     if (!raw) return null
     const s = JSON.parse(raw)
     if (!s || !s.token) return null
-    // Treat as expired if expires_at is in the past
-    if (s.expires_at && Date.now() > s.expires_at) {
+    // Support either ms or seconds from different payload versions
+    const expiresAtMs = s.expires_at && s.expires_at < 1e12 ? s.expires_at * 1000 : s.expires_at
+    if (expiresAtMs && Date.now() > expiresAtMs) {
       clearSession()
       return null
     }

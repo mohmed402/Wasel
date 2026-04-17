@@ -24,6 +24,20 @@ const supabase = supabaseUrl && supabaseAnonKey
   : null
 
 /**
+ * Create a short-lived server-side auth client (anon key)
+ * used for auth flows like signInWithPassword.
+ */
+function createServerAuthClient() {
+  if (!supabaseUrl || !supabaseAnonKey) return null
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  })
+}
+
+/**
  * Create Supabase admin client with service role key (for server-side operations)
  * This client bypasses Row Level Security (RLS) policies
  * Use with caution - only for server-side operations
@@ -1431,6 +1445,7 @@ const catalogProductOperations = {
 module.exports = {
   supabase,
   supabaseAdmin,
+  createServerAuthClient,
   customer: customerOperations,
   payment: paymentOperations,
   order: orderOperations,
