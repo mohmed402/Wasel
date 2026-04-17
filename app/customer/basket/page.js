@@ -11,13 +11,25 @@ import {
   updateBasketQuantity,
   updateSheinQuantity,
 } from '../basket-storage'
-import { HiX, HiTrash, HiCheckCircle, HiChevronLeft, HiShoppingBag, HiUser, HiLockClosed, HiTag, HiTruck } from 'react-icons/hi'
+import {
+  HiX,
+  HiTrash,
+  HiCheckCircle,
+  HiChevronLeft,
+  HiShoppingBag,
+  HiUser,
+  HiLockClosed,
+  HiTag,
+  HiTruck,
+  HiTicket,
+  HiCube,
+} from 'react-icons/hi'
 
 // Pricing method definitions shown to the customer
 const PRICING_OPTIONS = [
   {
     id: 1,
-    icon: '🚚',
+    Icon: HiTruck,
     title: 'شحن مجاني',
     subtitle: 'بدون رسوم شحن إضافية',
     desc: 'الشحن مجاني عليك. تستفيد الشركة من كوبونات الخصم.',
@@ -27,7 +39,7 @@ const PRICING_OPTIONS = [
   },
   {
     id: 2,
-    icon: '🎟️',
+    Icon: HiTicket,
     title: 'شحن مدفوع + كوبون خصم لك',
     subtitle: 'ادفع الشحن واحصل على كوبون',
     desc: 'تدفع رسوم الشحن وتحصل أنت على كوبون خصم من Shein لاستخدامه لاحقاً.',
@@ -37,7 +49,7 @@ const PRICING_OPTIONS = [
   },
   {
     id: 3,
-    icon: '📦',
+    Icon: HiCube,
     title: 'شحن مدفوع فقط',
     subtitle: 'ادفع الشحن بسعر مميز',
     desc: 'تدفع رسوم الشحن. الكوبونات تُوظَّف لخفض تكلفة الطلب الكلية.',
@@ -383,6 +395,7 @@ export default function CustomerBasketPage() {
 
                 <div className={styles.pricingCards}>
                   {visibleOptions.map((opt) => {
+                    const CardIcon = opt.Icon
                     const isSelected = selectedMethod === opt.id
                     const total = totalForMethod(opt.id)
                     const hasShipping = opt.id !== 1
@@ -395,7 +408,9 @@ export default function CustomerBasketPage() {
                         aria-pressed={isSelected}
                       >
                         <div className={styles.pricingCardTop}>
-                          <span className={styles.pricingCardIcon} aria-hidden>{opt.icon}</span>
+                          <span className={styles.pricingCardIcon} aria-hidden>
+                            <CardIcon />
+                          </span>
                           {opt.badge && (
                             <span className={styles.pricingCardBadge} style={{ background: opt.badgeColor }}>
                               {opt.badge}
@@ -449,10 +464,17 @@ export default function CustomerBasketPage() {
             {(checkoutPhase === 'contact' || checkoutPhase === 'delivery') && (
               <div className={styles.checkoutWrap}>
                 {/* Selected method summary pill */}
-                {selectedMethod && (
+                {selectedMethod && (() => {
+                  const sel = PRICING_OPTIONS.find((o) => o.id === selectedMethod)
+                  const PillIcon = sel?.Icon
+                  return (
                   <div className={styles.selectedMethodPill}>
-                    <span>{PRICING_OPTIONS.find((o) => o.id === selectedMethod)?.icon}</span>
-                    <span>{PRICING_OPTIONS.find((o) => o.id === selectedMethod)?.title}</span>
+                    {PillIcon && (
+                      <span className={styles.selectedMethodPillIcon} aria-hidden>
+                        <PillIcon />
+                      </span>
+                    )}
+                    <span>{sel?.title}</span>
                     <button
                       type="button"
                       className={styles.selectedMethodChange}
@@ -461,7 +483,8 @@ export default function CustomerBasketPage() {
                       تغيير
                     </button>
                   </div>
-                )}
+                  )
+                })()}
 
                 <div className={styles.checkoutCard}>
                   <div className={styles.checkoutCardHead}>
