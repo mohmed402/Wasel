@@ -4,6 +4,7 @@ import {
   Suspense,
   useState,
   useEffect,
+  useRef,
   useMemo,
   useCallback,
 } from 'react'
@@ -12,7 +13,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import styles from '../customer.module.css'
 import { getBasket, addToBasket } from '../basket-storage'
 import CustomerSiteHeader from '../CustomerSiteHeader'
-import { HiSearch, HiX } from 'react-icons/hi'
+import { HiSearch, HiX, HiCheckCircle, HiShoppingBag } from 'react-icons/hi'
 
 function normalizeForSearch(s) {
   if (s == null || typeof s !== 'string') return ''
@@ -42,6 +43,8 @@ function ProductsView() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [basketCount, setBasketCount] = useState(0)
+  const [toast, setToast] = useState(null) // { name, id }
+  const toastTimer = useRef(null)
 
   const qParam = searchParams.get('q') ?? ''
   const categoryParam = searchParams.get('category') ?? ''
@@ -159,6 +162,25 @@ function ProductsView() {
   return (
     <div className={styles.page}>
       <CustomerSiteHeader basketCount={basketCount} />
+
+      {/* Toast notification */}
+      {toast && (
+        <div className={styles.addToastWrap} role="status" aria-live="polite">
+          <div className={styles.addToast}>
+            <HiCheckCircle className={styles.addToastIcon} aria-hidden />
+            <div className={styles.addToastText}>
+              <span className={styles.addToastTitle}>تمت الإضافة إلى السلة</span>
+              <span className={styles.addToastName}>{toast.name}</span>
+            </div>
+            <Link href="/customer/basket" className={styles.addToastBtn}>
+              <HiShoppingBag aria-hidden /> عرض السلة
+            </Link>
+            <button type="button" className={styles.addToastClose} onClick={() => { clearTimeout(toastTimer.current); setToast(null) }} aria-label="إغلاق">
+              <HiX aria-hidden />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className={styles.content}>
         <h1 className={styles.productListTitle}>قائمة المنتجات</h1>
@@ -278,6 +300,10 @@ function ProductsView() {
                     onClick={() => {
                       addToBasket(p, 1)
                       refreshBasketCount()
+                      // Show toast notification
+                      clearTimeout(toastTimer.current)
+                      setToast({ name: p.name_ar || p.name, id: p.id })
+                      toastTimer.current = setTimeout(() => setToast(null), 3000)
                     }}
                   >
                     إضافة إلى السلة
