@@ -1709,6 +1709,116 @@ font-family: 'Tajawal' !important;
   justify-content: center;
 }
 
+/* ── Post-order password creation ──────────────────────── */
+.postOrderPasswordBox {
+  margin: 1.25rem 0 0;
+  padding: 1.25rem;
+  background: rgba(8,175,102,0.06);
+  border: 1px solid rgba(8,175,102,0.22);
+  border-radius: 14px;
+  text-align: start;
+  animation: slideInUp 0.3s ease both;
+}
+
+.postOrderPasswordHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.postOrderPasswordIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(8,175,102,0.15);
+  border: 1px solid rgba(8,175,102,0.3);
+  color: #08af66;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.postOrderPasswordTitle {
+  font-size: 0.95rem;
+  color: #fff;
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.postOrderPasswordSub {
+  font-size: 0.78rem;
+  color: rgba(232,232,234,0.48);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.postOrderPasswordFields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+}
+
+.postOrderPasswordField {
+  display: flex;
+  flex-direction: column;
+}
+
+.postOrderShowPass {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  color: rgba(232,232,234,0.45);
+  cursor: pointer;
+  user-select: none;
+}
+
+.postOrderPasswordError {
+  font-size: 0.82rem;
+  color: #fca5a5;
+  margin: 0 0 0.65rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(220,38,38,0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(220,38,38,0.25);
+}
+
+.postOrderPasswordActions {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.postOrderPasswordDone {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.postOrderDashBtn {
+  margin-inline-start: auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background: rgba(8,175,102,0.15);
+  border: 1px solid rgba(8,175,102,0.35);
+  border-radius: 9px;
+  color: #08af66;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+.postOrderDashBtn:hover {
+  background: rgba(8,175,102,0.25);
+}
+
 /* Total row */
 .totalRow {
   display: flex;

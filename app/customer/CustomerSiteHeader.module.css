@@ -854,6 +854,119 @@
   /* class marker for media query */
 }
 
+/* ══ ACCOUNT MENU (logged-in state) ══ */
+.accountMenu {
+  position: relative;
+}
+
+.accountBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 12px;
+  background: rgba(0,230,118,0.08);
+  border: 1px solid rgba(0,230,118,0.3);
+  border-radius: 10px;
+  color: var(--site-green);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font-cairo), 'Cairo', sans-serif;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+.accountBtn:hover {
+  background: rgba(0,230,118,0.15);
+  color: var(--site-green);
+}
+
+.accountAvatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--site-green);
+  color: #000;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.accountName {
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accountDropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--site-surface);
+  border: 1px solid var(--site-border);
+  border-top: 2px solid var(--site-green);
+  border-radius: 0 0 12px 12px;
+  min-width: 180px;
+  z-index: 400;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  overflow: hidden;
+}
+
+.accountMenu:hover .accountDropdown {
+  display: block;
+}
+
+.accountDropItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  font-size: 13px;
+  color: var(--site-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  border-bottom: 1px solid var(--site-border);
+  text-decoration: none;
+  font-family: var(--font-cairo), 'Cairo', sans-serif;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  width: 100%;
+  text-align: right;
+}
+.accountDropItem:last-child { border-bottom: none; }
+.accountDropItem:hover {
+  background: var(--site-surface2);
+  color: var(--site-green);
+}
+.accountDropDivider {
+  height: 1px;
+  background: var(--site-border);
+  margin: 4px 0;
+}
+.accountDropLogout { color: rgba(248,113,113,0.7) !important; }
+.accountDropLogout:hover { color: #f87171 !important; background: rgba(248,113,113,0.08) !important; }
+
+.mobileAvatarSmall {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--site-green);
+  color: #000;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 /* ══ BREAKPOINTS ══ */
 @media (max-width: 900px) {
   .topbarRight {

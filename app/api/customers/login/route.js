@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../server/supabase'
+import { randomBytes } from 'crypto'
 
 function normalizePhone(p) {
   return String(p || '')
@@ -8,11 +9,14 @@ function normalizePhone(p) {
     .trim()
 }
 
+function generateToken() {
+  return randomBytes(32).toString('hex')
+}
+
 /**
  * POST /api/customers/login
- * Lightweight password check for existing customers.
  * Body: { phone, password }
- * Returns { ok, customer: { name, address, saved_addresses } } or { error }
+ * Returns { ok, session: { token, expires_at, id, name, phone, ... } }
  */
 export async function POST(request) {
   if (!supabaseAdmin) {
@@ -30,38 +34,47 @@ export async function POST(request) {
 
     const { data, error } = await supabaseAdmin
       .from('customer')
-      .select('id, name, address, email, wh_account, password_hash, is_active')
+      .select('id, name, phone, email, address, wh_account, password_hash, is_active, wallet_balance, wallet_currency')
       .eq('phone', phone)
       .maybeSingle()
 
     if (error || !data) {
       return NextResponse.json({ error: 'الحساب غير موجود' }, { status: 404 })
     }
-
     if (!data.is_active) {
       return NextResponse.json({ error: 'الحساب غير نشط' }, { status: 403 })
     }
-
     if (!data.password_hash) {
-      return NextResponse.json({ error: 'كلمة المرور غير مضبوطة لهذا الحساب' }, { status: 401 })
+      return NextResponse.json({ error: 'كلمة المرور غير مضبوطة. أنشئ كلمة مرور أولاً.' }, { status: 401 })
     }
 
-    // Simple password comparison
-    // In production: store bcrypt hash in password_hash and compare with bcrypt
-    // For now we do a direct equality check (dev/mock); replace with bcrypt in production
     const match = password === data.password_hash
 
     if (!match) {
       return NextResponse.json({ error: 'كلمة المرور غير صحيحة' }, { status: 401 })
     }
 
+    // Issue a session token valid for 30 days
+    const token = generateToken()
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+
+    await supabaseAdmin
+      .from('customer')
+      .update({ session_token: token, session_expires_at: expiresAt })
+      .eq('id', data.id)
+
     return NextResponse.json({
       ok: true,
-      customer: {
+      session: {
+        token,
+        expires_at: Date.now() + 30 * 24 * 60 * 60 * 1000,
         id: data.id,
         name: data.name,
+        phone: data.phone,
+        email: data.email,
         address: data.address,
-        saved_addresses: [],
+        wallet_balance: data.wallet_balance ?? 0,
+        wallet_currency: data.wallet_currency || 'LYD',
       },
     })
   } catch (e) {

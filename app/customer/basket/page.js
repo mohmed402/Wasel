@@ -23,7 +23,9 @@ import {
   HiTruck,
   HiTicket,
   HiCube,
+  HiKey,
 } from 'react-icons/hi'
+import { setSession } from '../auth'
 
 // Pricing method definitions shown to the customer
 const PRICING_OPTIONS = [
@@ -86,6 +88,16 @@ export default function CustomerBasketPage() {
   const [loggedIn, setLoggedIn] = useState(false)
   const [loginError, setLoginError] = useState('')
   const [savedAddresses, setSavedAddresses] = useState([])
+
+  // Post-order password creation (optional account setup on success screen)
+  const [submittedPhone, setSubmittedPhone] = useState('')
+  const [submittedName, setSubmittedName] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState('')
+  const [passwordSaving, setPasswordSaving] = useState(false)
+  const [passwordSaved, setPasswordSaved] = useState(false)
+  const [passwordError, setPasswordError] = useState('')
+  const [showNewPass, setShowNewPass] = useState(false)
 
   // Pricing: admin sets available methods & shipping cost; customer picks their preference
   const [availableMethods, setAvailableMethods] = useState([1, 2, 3]) // all 3 shown by default
@@ -255,9 +267,14 @@ export default function CustomerBasketPage() {
       const data = await res.json()
       if (!res.ok) { setSubmitError(data.error || data.details || 'تعذر إرسال الطلب'); return }
       const ref = data.internal_ref || data.internalRef
+      // Capture before clearing so we can use in the password creation step
+      const capturedPhone = phone.trim()
+      const capturedName = fullName.trim()
       clearBasket()
       refresh()
       setSubmittedRef(ref)
+      setSubmittedPhone(capturedPhone)
+      setSubmittedName(capturedName)
       setCheckoutPhase('success')
       setFullName(''); setPhone(''); setPassword(''); setEmail('')
       setWhatsApp(''); setCity(''); setAddressLine(''); setOrderNotes('')
@@ -287,6 +304,32 @@ export default function CustomerBasketPage() {
 
   const visibleOptions = PRICING_OPTIONS.filter((o) => availableMethods.includes(o.id))
 
+  const handleSavePassword = async () => {
+    if (newPassword.length < 6) { setPasswordError('كلمة المرور يجب أن تكون 6 أحرف على الأقل'); return }
+    if (newPassword !== newPasswordConfirm) { setPasswordError('كلمتا المرور غير متطابقتين'); return }
+    setPasswordError('')
+    setPasswordSaving(true)
+    try {
+      const res = await fetch('/api/customers/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: submittedPhone,
+          password: newPassword,
+          name: submittedName,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setPasswordError(data.error || 'تعذر حفظ كلمة المرور'); return }
+      setSession(data.session)
+      setPasswordSaved(true)
+    } catch {
+      setPasswordError('حدث خطأ في الاتصال')
+    } finally {
+      setPasswordSaving(false)
+    }
+  }
+
   return (
     <div className={styles.page}>
       <CustomerSiteHeader basketCount={unitCount} />
@@ -297,17 +340,107 @@ export default function CustomerBasketPage() {
         {checkoutPhase === 'success' && submittedRef && (
           <section className={styles.checkoutSuccess} aria-live="polite">
             <div className={styles.checkoutSuccessIcon} aria-hidden><HiCheckCircle /></div>
-            <h2 className={styles.checkoutSuccessTitle}>تم استلام طلبك</h2>
+            <h2 className={styles.checkoutSuccessTitle}>تم استلام طلبك 🎉</h2>
             <p className={styles.checkoutSuccessText}>
               شكراً لك. سيقوم فريقنا بمراجعة الطلب والتأكد من التفاصيل والأسعار، ثم التواصل معك لإكمال الإجراءات ودفع العربون عند الموافقة.
             </p>
             <div className={styles.checkoutRefBox} dir="ltr">{submittedRef}</div>
             <p className={styles.checkoutSuccessText} style={{ fontSize: '0.88rem' }}>
-              احتفظ بهذا الرقم لمتابعة حالة الطلب من صفحة تتبع الطلب.
+              احتفظ بهذا الرقم لمتابعة حالة طلبك.
             </p>
-            <div className={styles.checkoutSuccessLinks}>
+
+            {/* ── Optional: create account password right after order ── */}
+            {!loggedIn && submittedPhone && (
+              <div className={styles.postOrderPasswordBox}>
+                {passwordSaved ? (
+                  <div className={styles.postOrderPasswordDone}>
+                    <HiCheckCircle style={{ color: '#08af66', fontSize: '1.3rem', flexShrink: 0 }} aria-hidden />
+                    <div>
+                      <strong>تم إنشاء حسابك بنجاح!</strong>
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.82rem', color: 'rgba(232,232,234,0.6)' }}>
+                        يمكنك الآن تتبع طلباتك ورصيد محفظتك من حسابك الشخصي.
+                      </p>
+                    </div>
+                    <Link href="/customer/dashboard" className={styles.postOrderDashBtn}>
+                      الذهاب للحساب
+                    </Link>
+                  </div>
+                ) : (
+                  <>
+                    <div className={styles.postOrderPasswordHead}>
+                      <span className={styles.postOrderPasswordIcon} aria-hidden>
+                        <HiKey />
+                      </span>
+                      <div>
+                        <strong className={styles.postOrderPasswordTitle}>أنشئ كلمة مرور لحسابك</strong>
+                        <p className={styles.postOrderPasswordSub}>
+                          اختياري — تتيح لك متابعة طلباتك ورصيد محفظتك في أي وقت.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className={styles.postOrderPasswordFields}>
+                      <div className={styles.postOrderPasswordField}>
+                        <input
+                          className={styles.checkoutInput}
+                          type={showNewPass ? 'text' : 'password'}
+                          placeholder="كلمة مرور جديدة (6 أحرف على الأقل)"
+                          value={newPassword}
+                          onChange={(e) => { setNewPassword(e.target.value); setPasswordError('') }}
+                          autoComplete="new-password"
+                        />
+                      </div>
+                      <div className={styles.postOrderPasswordField}>
+                        <input
+                          className={styles.checkoutInput}
+                          type={showNewPass ? 'text' : 'password'}
+                          placeholder="تأكيد كلمة المرور"
+                          value={newPasswordConfirm}
+                          onChange={(e) => { setNewPasswordConfirm(e.target.value); setPasswordError('') }}
+                          onKeyDown={(e) => e.key === 'Enter' && handleSavePassword()}
+                          autoComplete="new-password"
+                        />
+                      </div>
+                      <label className={styles.postOrderShowPass}>
+                        <input
+                          type="checkbox"
+                          checked={showNewPass}
+                          onChange={(e) => setShowNewPass(e.target.checked)}
+                          style={{ accentColor: '#08af66' }}
+                        />
+                        إظهار كلمة المرور
+                      </label>
+                    </div>
+
+                    {passwordError && (
+                      <p className={styles.postOrderPasswordError}>{passwordError}</p>
+                    )}
+
+                    <div className={styles.postOrderPasswordActions}>
+                      <button
+                        type="button"
+                        className={styles.checkoutPrimaryBtn}
+                        onClick={handleSavePassword}
+                        disabled={passwordSaving || !newPassword || !newPasswordConfirm}
+                      >
+                        {passwordSaving ? 'جاري الحفظ...' : 'حفظ كلمة المرور'}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.checkoutBackBtn}
+                        onClick={() => { setSubmittedPhone(''); setNewPassword(''); setNewPasswordConfirm('') }}
+                      >
+                        تخطي
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            <div className={styles.checkoutSuccessLinks} style={{ marginTop: '1.25rem' }}>
               <Link href={`/customer/track?ref=${encodeURIComponent(submittedRef)}`} className={styles.fetchBtn} style={{ textDecoration: 'none' }}>
-                الانتقال للتتبع
+                تتبع الطلب
               </Link>
               <Link href="/customer/products" className={styles.checkoutBackBtn} style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
                 متابعة التسوق
