@@ -36,9 +36,8 @@ next-env.d.ts
 
 
 *.md
-**/*.sql
+**/**/*.sql
+**/**/**/*.sql
 
-
-
-
-
+/docs/*.sql
+docs/wallet_schema.sql
