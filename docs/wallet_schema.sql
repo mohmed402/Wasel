@@ -3,13 +3,19 @@
 --  Run this against your Supabase project after the existing tables.
 -- ═══════════════════════════════════════════════════════════════════
 
--- 1. Add password & wallet fields to the existing `customer` table
+-- 1. Add password, session & wallet fields to the existing `customer` table
 -- ---------------------------------------------------------------
 ALTER TABLE customer
-  ADD COLUMN IF NOT EXISTS has_password  boolean      NOT NULL DEFAULT false,
-  ADD COLUMN IF NOT EXISTS password_hash text,                          -- bcrypt hash
-  ADD COLUMN IF NOT EXISTS wallet_balance numeric(14,3) NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS wallet_currency varchar(10)  NOT NULL DEFAULT 'LYD';
+  ADD COLUMN IF NOT EXISTS has_password        boolean      NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS password_hash       text,                          -- store bcrypt hash in production
+  ADD COLUMN IF NOT EXISTS session_token       text,                          -- random 64-char hex; issued on login
+  ADD COLUMN IF NOT EXISTS session_expires_at  timestamptz,                   -- 30-day rolling expiry
+  ADD COLUMN IF NOT EXISTS wallet_balance      numeric(14,3) NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS wallet_currency     varchar(10)   NOT NULL DEFAULT 'LYD';
+
+-- Index for fast session lookups
+CREATE INDEX IF NOT EXISTS idx_customer_session_token ON customer(session_token)
+  WHERE session_token IS NOT NULL;
 
 -- 2. Customer Wallets table
 -- ---------------------------------------------------------------

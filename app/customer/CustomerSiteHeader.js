@@ -19,8 +19,11 @@ import {
   HiCube,
   HiPaperAirplane,
   HiRefresh,
+  HiLogout,
+  HiViewGrid,
 } from 'react-icons/hi'
 import CustomerHeaderLogo from './CustomerHeaderLogo'
+import { getSession, clearSession } from './auth'
 
 const cairo = Cairo({
   subsets: ['arabic', 'latin'],
@@ -82,6 +85,19 @@ export default function CustomerSiteHeader({
   const [menuOpen, setMenuOpen] = useState(false)
   const [openSub, setOpenSub] = useState(null)
   const [searchQ, setSearchQ] = useState('')
+  const [session, setSessionState] = useState(null)
+
+  useEffect(() => {
+    const sync = () => setSessionState(getSession())
+    sync()
+    window.addEventListener('wasel_session_change', sync)
+    return () => window.removeEventListener('wasel_session_change', sync)
+  }, [])
+
+  const handleLogout = () => {
+    clearSession()
+    router.push('/')
+  }
 
   const onHome = pathname === '/' || pathname === '/customer' || pathname === '/customer/'
   const isProducts = pathname.startsWith('/customer/products')
@@ -203,12 +219,37 @@ export default function CustomerSiteHeader({
         </div>
 
         <div className={styles.headerActions}>
-          <Link href="/customer/products" className={`${styles.iconBtn} ${styles.desktopOnly}`} title="حسابي" aria-label="حسابي">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-          </Link>
+          {session ? (
+            <div className={`${styles.accountMenu} ${styles.desktopOnly}`}>
+              <Link href="/customer/dashboard" className={styles.accountBtn}>
+                <span className={styles.accountAvatar}>{(session.name || 'ع').charAt(0)}</span>
+                <span className={styles.accountName}>{session.name?.split(' ')[0] || 'حسابي'}</span>
+              </Link>
+              <div className={styles.accountDropdown}>
+                <Link href="/customer/dashboard" className={styles.accountDropItem}>
+                  <HiViewGrid className={styles.dropIconSvg} aria-hidden /> لوحة التحكم
+                </Link>
+                <Link href="/customer/dashboard?tab=orders" className={styles.accountDropItem}>
+                  <HiShoppingBag className={styles.dropIconSvg} aria-hidden /> طلباتي
+                </Link>
+                <Link href="/customer/dashboard?tab=wallet" className={styles.accountDropItem}>
+                  <svg className={styles.dropIconSvg} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 1 0 4 0 2 2 0 0 0-4 0z"/></svg>
+                  محفظتي
+                </Link>
+                <div className={styles.accountDropDivider} />
+                <button type="button" className={`${styles.accountDropItem} ${styles.accountDropLogout}`} onClick={handleLogout}>
+                  <HiLogout className={styles.dropIconSvg} aria-hidden /> تسجيل الخروج
+                </button>
+              </div>
+            </div>
+          ) : (
+            <Link href="/customer/login" className={`${styles.iconBtn} ${styles.desktopOnly}`} title="تسجيل الدخول" aria-label="تسجيل الدخول">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </Link>
+          )}
           <Link href="/#recommendations" className={`${styles.iconBtn} ${styles.desktopOnly}`} title="المفضلة" aria-label="المفضلة">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" />
@@ -494,13 +535,20 @@ export default function CustomerSiteHeader({
         </nav>
 
         <div className={styles.mobileMenuFooter}>
-          <Link href="/customer/products" className={`${styles.mobileFooterBtn} ${styles.mobileFooterBtnOutlined}`} onClick={closeMenu}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-            حسابي
-          </Link>
+          {session ? (
+            <Link href="/customer/dashboard" className={`${styles.mobileFooterBtn} ${styles.mobileFooterBtnOutlined}`} onClick={closeMenu}>
+              <span className={styles.mobileAvatarSmall}>{(session.name || 'ع').charAt(0)}</span>
+              {session.name?.split(' ')[0] || 'حسابي'}
+            </Link>
+          ) : (
+            <Link href="/customer/login" className={`${styles.mobileFooterBtn} ${styles.mobileFooterBtnOutlined}`} onClick={closeMenu}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              تسجيل الدخول
+            </Link>
+          )}
           <Link href="/customer/basket" className={`${styles.mobileFooterBtn} ${styles.mobileFooterBtnFilled}`} onClick={closeMenu}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
               <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
