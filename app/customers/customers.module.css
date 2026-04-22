@@ -29,7 +29,7 @@
 }
 
 .pageSubtitle {
-  color: #6B7280;
+  color: var(--text-muted);
   font-size: 1rem;
   margin: 0;
 }
@@ -66,8 +66,8 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.25rem;
-  background: white;
-  border: 1px solid #E5E7EB;
+  background: var(--surface-inset);
+  border: 1px solid var(--table-control-border);
   border-radius: var(--border-radius);
   color: var(--text);
   cursor: pointer;
@@ -98,7 +98,7 @@
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
-  border-bottom: 2px solid #E5E7EB;
+  border-bottom: 2px solid var(--table-header-rule);
   width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -126,7 +126,7 @@
   background: transparent;
   border: none;
   border-bottom: 3px solid transparent;
-  color: #6B7280;
+  color: var(--text-muted);
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
@@ -139,24 +139,26 @@
 
 .tab:hover {
   color: var(--primary);
-  background: #F9FAFB;
+  background: var(--admin-surface-hover);
 }
 
 .tabActive {
   color: var(--primary);
   border-bottom-color: var(--primary);
-  background: #F9FAFB;
+  background: var(--admin-surface-hover);
 }
 
 .statsBar {
   display: flex;
   gap: 1.5rem;
   padding: 1.5rem;
-  background: white;
+  background: var(--surface-raised);
+  border: 1px solid var(--surface-raised-border);
   border-radius: var(--border-radius);
   margin-bottom: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   flex-wrap: wrap;
+  color: var(--text);
 }
 
 .stat {
@@ -167,7 +169,7 @@
 
 .statLabel {
   font-size: 0.9rem;
-  color: #6B7280;
+  color: var(--text-muted);
   font-weight: 500;
 }
 

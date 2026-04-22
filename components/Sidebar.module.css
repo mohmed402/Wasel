@@ -1,22 +1,22 @@
 .sidebar {
   width: 280px;
   height: 100vh;
-  background: white;
-  border-left: 1px solid #E5E7EB;
+  background: var(--admin-surface, #1e1e1e);
+  border-left: 1px solid var(--admin-border, #2a2a2a);
   display: flex;
   flex-direction: column;
   position: fixed;
   right: 0;
   top: 0;
   overflow-y: auto;
-  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.05);
+  box-shadow: -2px 0 14px rgba(0, 0, 0, 0.35);
   z-index: 1000;
   transition: transform 0.3s ease-in-out;
 }
 
 .logo {
   padding: 1.5rem;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid var(--admin-border, #2a2a2a);
   background: var(--primary);
   display: flex;
   align-items: center;
@@ -102,7 +102,7 @@
 .arrow {
   font-size: 1rem;
   transition: transform 0.2s ease;
-  color: #6B7280;
+  color: var(--admin-muted, #b6ae9b);
   margin-right: auto;
   display: flex;
   align-items: center;
@@ -126,8 +126,8 @@
   padding: 0;
   margin: 0;
   background: var(--secondary);
-  border-top: 1px solid #E5E7EB;
-  border-bottom: 1px solid #E5E7EB;
+  border-top: 1px solid var(--admin-border, #2a2a2a);
+  border-bottom: 1px solid var(--admin-border, #2a2a2a);
 }
 
 .submenuItem {
@@ -137,7 +137,7 @@
 .submenuLink {
   display: block;
   padding: 0.75rem 1.5rem 0.75rem 3rem;
-  color: #4B5563;
+  color: var(--admin-muted, #b6ae9b);
   text-decoration: none;
   font-size: 0.9rem;
   transition: all 0.2s ease;
@@ -145,7 +145,7 @@
 }
 
 .submenuLink:hover {
-  background: white;
+  background: #262626;
   color: var(--primary);
   border-right-color: var(--accent);
   font-weight: 500;
@@ -165,8 +165,8 @@
 
 .submenuLink[aria-current="page"] {
   border-right-color: var(--accent);
-  background: rgba(30, 58, 138, 0.1);
-  color: var(--primary);
+  background: rgba(8, 175, 102, 0.2);
+  color: var(--admin-ink, #F5ECD5);
 }
 
 /* Scrollbar styling */
@@ -175,16 +175,16 @@
 }
 
 .sidebar::-webkit-scrollbar-track {
-  background: #F9FAFB;
+  background: #1a1a1a;
 }
 
 .sidebar::-webkit-scrollbar-thumb {
-  background: #D1D5DB;
+  background: #3b3b3b;
   border-radius: 3px;
 }
 
 .sidebar::-webkit-scrollbar-thumb:hover {
-  background: #9CA3AF;
+  background: #555;
 }
 
 /* Mobile Menu Button */

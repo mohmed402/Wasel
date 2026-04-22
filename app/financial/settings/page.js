@@ -191,13 +191,7 @@ export default function FinancialSettingsPage() {
           <h2 className={styles.sectionTitle}>إعدادات العملة</h2>
         </div>
 
-        <div style={{ 
-          background: 'white', 
-          borderRadius: '12px', 
-          padding: '2rem', 
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          maxWidth: '600px'
-        }}>
+        <div className={`${styles.panelPadded} ${styles.panelPaddedNarrow}`}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '2rem' }}>
               <p>جاري التحميل...</p>
@@ -208,20 +202,14 @@ export default function FinancialSettingsPage() {
                 <label className={styles.required} style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
                   العملة الأساسية للتقارير
                 </label>
-                <p className={styles.helpText} style={{ color: '#6B7280', fontSize: '0.875rem', marginBottom: '1rem' }}>
+                <p className={styles.helpText} style={{ fontSize: '0.875rem', marginBottom: '1rem' }}>
                   جميع المبالغ سيتم تحويلها إلى هذه العملة في التقارير والعروض الإجمالية
                 </p>
                 <select
                   value={baseCurrency}
                   onChange={(e) => setBaseCurrency(e.target.value)}
-                  className={styles.modalSelect}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '8px',
-                    fontSize: '1rem'
-                  }}
+                  className={`${styles.modalSelect} ${styles.filterControl}`}
+                  style={{ width: '100%' }}
                 >
                   {Object.values(CURRENCIES).map((curr) => (
                     <option key={curr.code} value={curr.code}>
@@ -232,15 +220,7 @@ export default function FinancialSettingsPage() {
               </div>
 
               {/* Current Selection Display */}
-              <div style={{ 
-                background: '#F3F4F6', 
-                padding: '1rem', 
-                borderRadius: '8px', 
-                marginBottom: '1.5rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
+              <div className={styles.currencyHighlightBox}>
                 <span style={{ fontWeight: '500' }}>العملة الحالية:</span>
                 <span style={{ 
                   fontSize: '1.25rem', 
@@ -290,16 +270,7 @@ export default function FinancialSettingsPage() {
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                 <Link 
                   href="/financial"
-                  style={{
-                    padding: '0.75rem 1.5rem',
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '8px',
-                    background: 'white',
-                    color: '#374151',
-                    textDecoration: 'none',
-                    fontWeight: '500',
-                    display: 'inline-block'
-                  }}
+                  className={styles.settingsLinkSecondary}
                 >
                   إلغاء
                 </Link>
@@ -335,8 +306,8 @@ export default function FinancialSettingsPage() {
             نظام التسعير والشحن
           </h2>
         </div>
-        <div style={{ background: 'white', borderRadius: '12px', padding: '2rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <p style={{ color: '#6B7280', marginBottom: '1.25rem', fontSize: '0.9rem', lineHeight: 1.6 }}>
+        <div className={styles.panelPadded}>
+          <p className={styles.helpText} style={{ marginBottom: '1.25rem', fontSize: '0.9rem', lineHeight: 1.6 }}>
             اختر طريقة التسعير التي تنطبق على الطلبات القادمة من موقع العملاء.
           </p>
 
@@ -349,11 +320,12 @@ export default function FinancialSettingsPage() {
                   alignItems: 'flex-start',
                   gap: '0.75rem',
                   padding: '1rem',
-                  border: `2px solid ${pricingMethod === m.id ? '#16a34a' : '#e5e7eb'}`,
+                  border: pricingMethod === m.id ? '2px solid var(--primary)' : '2px solid var(--table-control-border)',
                   borderRadius: '10px',
                   cursor: 'pointer',
-                  background: pricingMethod === m.id ? '#f0fdf4' : 'white',
+                  background: pricingMethod === m.id ? 'rgba(8, 175, 102, 0.14)' : 'var(--surface-raised)',
                   transition: 'border-color 0.2s, background 0.2s',
+                  color: 'var(--text)',
                 }}
               >
                 <input
@@ -366,7 +338,7 @@ export default function FinancialSettingsPage() {
                 />
                 <div>
                   <div style={{ fontWeight: 700, marginBottom: '0.25rem' }}>{m.label}</div>
-                  <div style={{ fontSize: '0.85rem', color: '#6B7280', lineHeight: 1.5 }}>{m.desc}</div>
+                  <div className={styles.helpText} style={{ fontSize: '0.85rem', lineHeight: 1.5 }}>{m.desc}</div>
                 </div>
               </label>
             ))}
@@ -383,7 +355,8 @@ export default function FinancialSettingsPage() {
                 step="0.5"
                 value={shippingCost}
                 onChange={(e) => setShippingCost(e.target.value)}
-                style={{ padding: '0.65rem 1rem', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '1rem', width: '100%', maxWidth: '240px' }}
+                className={styles.filterControl}
+                style={{ maxWidth: '240px' }}
               />
             </div>
           )}
@@ -393,7 +366,7 @@ export default function FinancialSettingsPage() {
               <HiCurrencyDollar />
               سعر الدولار المعروض للزبون (د.ل لكل $1)
             </label>
-            <p style={{ fontSize: '0.82rem', color: '#6B7280', marginBottom: '0.5rem' }}>
+            <p className={styles.helpText} style={{ fontSize: '0.82rem', marginBottom: '0.5rem' }}>
               السعر الذي يُعرض للزبون عند احتساب إجمالي السلة بالدينار (مثال: 6 أو 6.25)
             </p>
             <input
@@ -402,7 +375,8 @@ export default function FinancialSettingsPage() {
               step="0.25"
               value={exchangeRateDisplay}
               onChange={(e) => setExchangeRateDisplay(e.target.value)}
-              style={{ padding: '0.65rem 1rem', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '1rem', width: '100%', maxWidth: '240px' }}
+              className={styles.filterControl}
+              style={{ maxWidth: '240px' }}
             />
           </div>
 
@@ -433,15 +407,10 @@ export default function FinancialSettingsPage() {
           <h2 className={styles.sectionTitle}>معلومات إضافية</h2>
         </div>
 
-        <div style={{ 
-          background: 'white', 
-          borderRadius: '12px', 
-          padding: '2rem', 
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-        }}>
+        <div className={styles.panelPadded}>
           <div style={{ marginBottom: '1.5rem' }}>
             <h3 style={{ marginBottom: '0.5rem', fontWeight: '600' }}>حول العملة الأساسية</h3>
-            <p style={{ color: '#6B7280', lineHeight: '1.6' }}>
+            <p className={styles.helpText} style={{ lineHeight: '1.6' }}>
               العملة الأساسية هي العملة التي يتم استخدامها في جميع التقارير والعروض الإجمالية. 
               جميع المبالغ في العملات الأخرى سيتم تحويلها تلقائياً إلى العملة الأساسية باستخدام أسعار الصرف المحددة.
             </p>
@@ -449,7 +418,7 @@ export default function FinancialSettingsPage() {
 
           <div style={{ marginBottom: '1.5rem' }}>
             <h3 style={{ marginBottom: '0.5rem', fontWeight: '600' }}>أسعار الصرف</h3>
-            <p style={{ color: '#6B7280', lineHeight: '1.6' }}>
+            <p className={styles.helpText} style={{ lineHeight: '1.6' }}>
               حالياً يتم استخدام أسعار صرف افتراضية. يمكن تحديث هذه الأسعار من خلال واجهة برمجة التطبيقات أو قاعدة البيانات.
             </p>
           </div>
@@ -458,21 +427,10 @@ export default function FinancialSettingsPage() {
             <h3 style={{ marginBottom: '0.5rem', fontWeight: '600' }}>العملات المدعومة</h3>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
               {Object.values(CURRENCIES).map((curr) => (
-                <span 
-                  key={curr.code}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: '#F3F4F6',
-                    borderRadius: '6px',
-                    fontSize: '0.875rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.25rem'
-                  }}
-                >
+                <span key={curr.code} className={styles.chipMuted}>
                   <span>{curr.symbol}</span>
                   <span>{curr.name}</span>
-                  <span style={{ color: '#6B7280' }}>({curr.code})</span>
+                  <span className={styles.helpText}>({curr.code})</span>
                 </span>
               ))}
             </div>

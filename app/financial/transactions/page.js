@@ -243,27 +243,13 @@ export default function AllTransactionsPage() {
             التصفية
           </h2>
         </div>
-        <div style={{ 
-          background: 'white', 
-          borderRadius: '12px', 
-          padding: '1.5rem', 
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '1rem'
-        }}>
+        <div className={styles.filtersPanel}>
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>الحساب</label>
+            <label className={styles.filterLabel}>الحساب</label>
             <select
               value={filters.accountId}
               onChange={(e) => setFilters({ ...filters, accountId: e.target.value })}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #E5E7EB',
-                borderRadius: '8px',
-                fontSize: '1rem'
-              }}
+              className={styles.filterControl}
             >
               <option value="">جميع الحسابات</option>
               {accounts.map(acc => (
@@ -273,17 +259,11 @@ export default function AllTransactionsPage() {
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>نوع الحركة</label>
+            <label className={styles.filterLabel}>نوع الحركة</label>
             <select
               value={filters.transactionType}
               onChange={(e) => setFilters({ ...filters, transactionType: e.target.value })}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #E5E7EB',
-                borderRadius: '8px',
-                fontSize: '1rem'
-              }}
+              className={styles.filterControl}
             >
               <option value="">جميع الأنواع</option>
               <option value="credit">إيداع</option>
@@ -293,34 +273,22 @@ export default function AllTransactionsPage() {
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>من تاريخ</label>
+            <label className={styles.filterLabel}>من تاريخ</label>
             <input
               type="date"
               value={filters.dateFrom}
               onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #E5E7EB',
-                borderRadius: '8px',
-                fontSize: '1rem'
-              }}
+              className={styles.filterControl}
             />
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>إلى تاريخ</label>
+            <label className={styles.filterLabel}>إلى تاريخ</label>
             <input
               type="date"
               value={filters.dateTo}
               onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #E5E7EB',
-                borderRadius: '8px',
-                fontSize: '1rem'
-              }}
+              className={styles.filterControl}
             />
           </div>
         </div>
@@ -335,26 +303,20 @@ export default function AllTransactionsPage() {
         </div>
 
         {loading ? (
-          <div style={{ 
-            background: 'white', 
-            borderRadius: '12px', 
-            padding: '3rem', 
-            textAlign: 'center',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-          }}>
+          <div className={styles.statePanel}>
             <p>جاري التحميل...</p>
           </div>
         ) : sortedTransactions.length > 0 ? (
-          <div style={{ background: 'white', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className={styles.tablePanel}>
+            <div className={styles.tableScroll}>
+              <table className={styles.dataTable}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #E5E7EB' }}>
-                    <th style={{ padding: '1rem', textAlign: 'right', fontWeight: '600' }}>التاريخ</th>
-                    <th style={{ padding: '1rem', textAlign: 'right', fontWeight: '600' }}>الوصف</th>
-                    <th style={{ padding: '1rem', textAlign: 'right', fontWeight: '600' }}>الحساب</th>
-                    <th style={{ padding: '1rem', textAlign: 'right', fontWeight: '600' }}>النوع</th>
-                    <th style={{ padding: '1rem', textAlign: 'right', fontWeight: '600' }}>المبلغ</th>
+                  <tr>
+                    <th>التاريخ</th>
+                    <th>الوصف</th>
+                    <th>الحساب</th>
+                    <th>النوع</th>
+                    <th>المبلغ</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -365,19 +327,19 @@ export default function AllTransactionsPage() {
                     const amountClass = displayAmount > 0 ? styles.credit : styles.debit
 
                     return (
-                      <tr key={tx.id} style={{ borderBottom: '1px solid #E5E7EB' }}>
-                        <td style={{ padding: '1rem', textAlign: 'right' }}>
+                      <tr key={tx.id}>
+                        <td>
                           {formatDate(tx.transaction_date)}
                         </td>
-                        <td style={{ padding: '1rem', textAlign: 'right' }}>
+                        <td>
                           <div style={{ fontWeight: '500' }}>{tx.description}</div>
                           {tx.transaction_type === 'transfer' && tx.related_account_id && (
-                            <div style={{ fontSize: '0.875rem', color: '#6B7280', marginTop: '0.25rem' }}>
+                            <div className={styles.mutedSmall}>
                               إلى: {getAccountName(tx.related_account_id)}
                             </div>
                           )}
                         </td>
-                        <td style={{ padding: '1rem', textAlign: 'right' }}>
+                        <td>
                           <Link 
                             href={`/financial/${tx.account_id}`}
                             style={{ color: 'var(--primary)', textDecoration: 'none' }}
@@ -385,7 +347,7 @@ export default function AllTransactionsPage() {
                             {getAccountName(tx.account_id)}
                           </Link>
                         </td>
-                        <td style={{ padding: '1rem', textAlign: 'right' }}>
+                        <td>
                           <span style={{ 
                             fontSize: '0.875rem', 
                             padding: '0.25rem 0.5rem', 
@@ -398,7 +360,7 @@ export default function AllTransactionsPage() {
                             {getTransactionTypeLabel(tx.transaction_type)}
                           </span>
                         </td>
-                        <td style={{ padding: '1rem', textAlign: 'right' }}>
+                        <td>
                           <div className={`${styles.transactionAmount} ${amountClass}`} style={{ fontWeight: '600' }}>
                             {displayAmount > 0 ? '+' : ''}{formatCurrency(Math.abs(displayAmount), tx.currency)}
                           </div>
@@ -416,14 +378,8 @@ export default function AllTransactionsPage() {
             </div>
           </div>
         ) : (
-          <div style={{ 
-            background: 'white', 
-            borderRadius: '12px', 
-            padding: '3rem', 
-            textAlign: 'center',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-          }}>
-            <p className={styles.noTransactions} style={{ fontSize: '1.125rem', color: '#6B7280' }}>
+          <div className={styles.statePanel}>
+            <p className={styles.noTransactions} style={{ fontSize: '1.125rem' }}>
               لا توجد حركات
             </p>
           </div>

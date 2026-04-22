@@ -245,8 +245,8 @@ export default function AccountTransactionsPage() {
         </div>
 
         {sortedTransactions.length > 0 ? (
-          <div style={{ background: 'white', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <ul className={styles.transactionsList} style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          <div className={styles.tablePanel}>
+            <ul className={`${styles.transactionsList} ${styles.listPlain}`}>
               {sortedTransactions.map((tx) => {
                 // Determine if this is a credit or debit for this account
                 const isCredit = tx.transaction_type === 'credit' || 
@@ -260,14 +260,7 @@ export default function AccountTransactionsPage() {
                 return (
                   <li 
                     key={tx.id} 
-                    className={styles.transactionItem}
-                    style={{ 
-                      padding: '1rem', 
-                      borderBottom: '1px solid #E5E7EB',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}
+                    className={styles.transactionRowFlat}
                   >
                     <div className={styles.transactionDetails} style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
@@ -286,7 +279,7 @@ export default function AccountTransactionsPage() {
                           </span>
                         )}
                       </div>
-                      <span className={styles.transactionDate} style={{ fontSize: '0.875rem', color: '#6B7280' }}>
+                      <span className={styles.transactionDate}>
                         {formatDate(tx.transaction_date)}
                       </span>
                     </div>
@@ -306,14 +299,8 @@ export default function AccountTransactionsPage() {
             </ul>
           </div>
         ) : (
-          <div style={{ 
-            background: 'white', 
-            borderRadius: '12px', 
-            padding: '3rem', 
-            textAlign: 'center',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-          }}>
-            <p className={styles.noTransactions} style={{ fontSize: '1.125rem', color: '#6B7280' }}>
+          <div className={styles.statePanel}>
+            <p className={styles.noTransactions} style={{ fontSize: '1.125rem' }}>
               لا توجد حركات لهذا الحساب
             </p>
           </div>

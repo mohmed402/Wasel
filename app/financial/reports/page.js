@@ -283,26 +283,12 @@ export default function FinancialReportsPage() {
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>اختر الفترة</h2>
         </div>
-        <div style={{ 
-          background: 'white', 
-          borderRadius: '12px', 
-          padding: '1.5rem', 
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          display: 'flex',
-          gap: '1rem',
-          flexWrap: 'wrap',
-          alignItems: 'center'
-        }}>
+        <div className={styles.periodToolbar}>
           <select
             value={reportPeriod}
             onChange={(e) => setReportPeriod(e.target.value)}
-            style={{
-              padding: '0.75rem',
-              border: '1px solid #E5E7EB',
-              borderRadius: '8px',
-              fontSize: '1rem',
-              minWidth: '200px'
-            }}
+            className={styles.filterControl}
+            style={{ minWidth: '200px' }}
           >
             <option value="day">اليوم</option>
             <option value="week">هذا الأسبوع</option>
@@ -318,24 +304,14 @@ export default function FinancialReportsPage() {
                 value={customDateFrom}
                 onChange={(e) => setCustomDateFrom(e.target.value)}
                 placeholder="من تاريخ"
-                style={{
-                  padding: '0.75rem',
-                  border: '1px solid #E5E5E7EB',
-                  borderRadius: '8px',
-                  fontSize: '1rem'
-                }}
+                className={styles.filterControl}
               />
               <input
                 type="date"
                 value={customDateTo}
                 onChange={(e) => setCustomDateTo(e.target.value)}
                 placeholder="إلى تاريخ"
-                style={{
-                  padding: '0.75rem',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: '8px',
-                  fontSize: '1rem'
-                }}
+                className={styles.filterControl}
               />
             </>
           )}
@@ -344,7 +320,7 @@ export default function FinancialReportsPage() {
             const { dateFrom, dateTo } = getDateRange()
             if (dateFrom && dateTo) {
               return (
-                <span style={{ color: '#6B7280', fontSize: '0.875rem' }}>
+                <span className={styles.mutedSmall} style={{ marginTop: 0 }}>
                   من {formatDate(dateFrom)} إلى {formatDate(dateTo)}
                 </span>
               )
@@ -397,7 +373,7 @@ export default function FinancialReportsPage() {
           <div className={styles.summaryValue} style={{ color: '#16A34A' }}>
             {formatCurrency(stats.periodTransactions.totalCredits)}
           </div>
-          <div style={{ fontSize: '0.875rem', color: '#6B7280', marginTop: '0.5rem' }}>
+          <div className={styles.mutedSmall} style={{ marginTop: '0.5rem' }}>
             {stats.periodTransactions.count} حركة
           </div>
         </div>
@@ -431,14 +407,14 @@ export default function FinancialReportsPage() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
           {/* Assets */}
-          <div style={{ background: 'white', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          <div className={styles.tablePanel}>
             <h3 style={{ marginBottom: '1rem', color: '#16A34A', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <HiTrendingUp /> الأصول
             </h3>
             {assets.length > 0 ? (
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              <ul className={styles.listPlain}>
                 {assets.map(asset => (
-                  <li key={asset.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between' }}>
+                  <li key={asset.id} className={styles.listRowSplit}>
                     <span>{asset.name}</span>
                     <span style={{ fontWeight: '600', color: '#16A34A' }}>
                       {formatCurrency(convertToBase(asset.balance, asset.currency))}
@@ -447,19 +423,19 @@ export default function FinancialReportsPage() {
                 ))}
               </ul>
             ) : (
-              <p style={{ color: '#6B7280' }}>لا توجد أصول</p>
+              <p className={styles.emptyListHint}>لا توجد أصول</p>
             )}
           </div>
 
           {/* Liabilities */}
-          <div style={{ background: 'white', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          <div className={styles.tablePanel}>
             <h3 style={{ marginBottom: '1rem', color: '#DC2626', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <HiTrendingDown /> المديونية
             </h3>
             {liabilities.length > 0 ? (
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              <ul className={styles.listPlain}>
                 {liabilities.map(liability => (
-                  <li key={liability.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between' }}>
+                  <li key={liability.id} className={styles.listRowSplit}>
                     <span>{liability.name}</span>
                     <span style={{ fontWeight: '600', color: '#DC2626' }}>
                       {formatCurrency(convertToBase(liability.balance, liability.currency))}
@@ -468,7 +444,7 @@ export default function FinancialReportsPage() {
                 ))}
               </ul>
             ) : (
-              <p style={{ color: '#6B7280' }}>لا توجد مديونية</p>
+              <p className={styles.emptyListHint}>لا توجد مديونية</p>
             )}
           </div>
         </div>

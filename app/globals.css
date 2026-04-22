@@ -9,6 +9,23 @@
   --error: #DC2626;
   --text: #111827;
   --border-radius: 8px;
+  --admin-bg: #0c0c0f;
+  --admin-surface: #111318;
+  --admin-accent: #08AF66;
+  --admin-ink: #EAEAEA;
+  --admin-muted: #a5a7ad;
+  --admin-border: #23262d;
+  --admin-surface-2: #171a20;
+  --admin-surface-hover: #1d2129;
+  --admin-overlay-soft: rgba(255, 255, 255, 0.04);
+  /* Shared table / panel rules (CSS Modules don’t match global `.table` selectors) */
+  --table-header-rule: #e5e7eb;
+  --table-row-divider: #f3f4f6;
+  --table-control-border: #e5e7eb;
+  --text-muted: #6b7280;
+  --surface-raised: #ffffff;
+  --surface-raised-border: #e5e7eb;
+  --surface-inset: #f3f4f6;
 }
 
 * {
@@ -42,6 +59,23 @@ a {
   direction: rtl;
 }
 
+.app-container:not(.app-container--full) {
+  --primary: var(--admin-accent);
+  --secondary: var(--admin-bg);
+  --accent: #34c985;
+  --success: #08AF66;
+  --warning: #f0b35e;
+  --error: #ff7f7f;
+  --text: var(--admin-ink);
+  --table-header-rule: var(--admin-border);
+  --table-row-divider: var(--admin-border);
+  --table-control-border: rgba(234, 234, 234, 0.22);
+  --text-muted: var(--admin-muted);
+  --surface-raised: var(--admin-surface);
+  --surface-raised-border: var(--admin-border);
+  --surface-inset: var(--admin-surface-2);
+}
+
 .app-container--full {
   display: block;
 }
@@ -62,6 +96,62 @@ a {
   min-height: 100dvh;
   width: -webkit-fill-available;
   min-width: 0;
+}
+
+.app-container:not(.app-container--full) .main-content {
+  background: var(--admin-bg);
+  color: var(--admin-ink);
+}
+
+/* Central admin surface controls (override hardcoded light blocks) */
+.app-container:not(.app-container--full) :where(
+  .statCard,
+  .content,
+  .tableContainer,
+  .filtersCard,
+  .formCard,
+  .summaryCard,
+  .card,
+  .panel,
+  .modalContent,
+  .statsBar
+) {
+  background: var(--admin-surface) !important;
+  border-color: var(--admin-border) !important;
+  color: var(--admin-ink);
+}
+
+.app-container:not(.app-container--full) :where(
+  .subtitle,
+  .statLabel,
+  .pageSubtitle,
+  .sectionText,
+  .noProof,
+  .days
+) {
+  color: var(--admin-muted) !important;
+}
+
+.app-container:not(.app-container--full) :where(
+  .table thead,
+  .problemTable thead
+) {
+  background: var(--admin-surface-2) !important;
+  border-color: var(--admin-border) !important;
+}
+
+.app-container:not(.app-container--full) :where(
+  .table td,
+  .problemTable td
+) {
+  border-color: var(--admin-border) !important;
+}
+
+.app-container:not(.app-container--full) :where(
+  .table tbody tr:hover,
+  .problemRow:hover
+) {
+  background: var(--admin-surface-hover) !important;
 }
 
 @media (max-width: 768px) {

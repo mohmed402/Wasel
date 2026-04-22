@@ -1,8 +1,10 @@
 .tableContainer {
-  background: white;
+  background: var(--surface-raised);
+  border: 1px solid var(--surface-raised-border);
   border-radius: var(--border-radius);
   overflow: scroll;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  color: var(--text);
 }
 
 .table {
@@ -13,14 +15,14 @@
 
 .table thead {
   background: var(--secondary);
-  border-bottom: 2px solid #E5E7EB;
+  border-bottom: 2px solid var(--table-header-rule);
 }
 
 .table th {
   padding: 1rem;
   text-align: right;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-muted);
   font-size: 0.9rem;
   white-space: nowrap;
 }
@@ -28,13 +30,13 @@
 .table td {
   padding: 1rem;
   text-align: right;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid var(--table-row-divider);
   color: var(--text);
   font-size: 0.95rem;
 }
 
 .table tbody tr:hover {
-  background: #F9FAFB;
+  background: var(--admin-surface-hover);
 }
 
 .table tbody tr:last-child td {
@@ -195,8 +197,8 @@
   align-items: center;
   gap: 0.25rem;
   padding: 0.5rem 0.75rem;
-  background: white;
-  border: 1px solid #E5E7EB;
+  background: var(--surface-inset);
+  border: 1px solid var(--table-control-border);
   border-radius: var(--border-radius);
   color: var(--text);
   cursor: pointer;

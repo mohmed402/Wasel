@@ -55,7 +55,7 @@
 
 /* Section */
 .section {
-  background: white;
+  background: rgba(17, 19, 23, 1);
   border-radius: var(--border-radius);
   padding: 2rem;
   margin-bottom: 2rem;
@@ -416,7 +416,7 @@
 
 /* Product Preview */
 .productPreview {
-  background: white;
+  background: var(--surface-raised);
   border: 2px solid var(--primary);
   border-radius: var(--border-radius);
   padding: 1.5rem;
@@ -634,7 +634,7 @@
 }
 
 .itemsTable tbody tr:hover {
-  background: #F9FAFB;
+  background: var(--admin-surface-hover);
 }
 
 .itemCell {
@@ -811,7 +811,7 @@
   flex: 1;
   min-width: 150px;
   padding: 1rem;
-  background: white;
+  background: var(--surface-raised);
   border: 2px solid #E5E7EB;
   border-radius: var(--border-radius);
   text-align: center;
@@ -849,7 +849,7 @@
   display: flex;
   gap: 1rem;
   padding: 2rem;
-  background: white;
+  background: rgba(17, 19, 23, 1);
   border-radius: var(--border-radius);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   flex-wrap: wrap;
@@ -891,7 +891,7 @@
 }
 
 .actionButtonCancel {
-  background: white;
+  background: var(--surface-raised);
   color: var(--error);
   border: 1px solid var(--error);
 }
@@ -927,7 +927,7 @@
 }
 
 .modal {
-  background: white;
+  background: var(--surface-raised);
   border-radius: var(--border-radius);
   padding: 2rem;
   max-width: 600px;
@@ -1167,7 +1167,7 @@
   border-radius: var(--border-radius);
   cursor: pointer;
   transition: all 0.2s ease;
-  background: white;
+  background: var(--surface-raised);
 }
 
 .expenseCheckbox:hover {
@@ -1262,7 +1262,7 @@
 
 /* Modal */
 .modal {
-  background: white;
+  background: var(--surface-raised);
   border-radius: var(--border-radius);
   width: 100%;
   max-width: 900px;
@@ -1280,7 +1280,7 @@
   border-bottom: 1px solid #E5E7EB;
   position: sticky;
   top: 0;
-  background: white;
+  background: var(--surface-raised);
   z-index: 10;
 }
 

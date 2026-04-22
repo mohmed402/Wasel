@@ -29,7 +29,7 @@
 }
 
 .pageSubtitle {
-  color: #6B7280;
+  color: var(--text-muted);
   font-size: 1rem;
   margin: 0;
 }
@@ -65,9 +65,9 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.25rem;
-  background: var(--secondary);
+  background: var(--surface-inset);
   color: var(--text);
-  border: 1px solid #E5E7EB;
+  border: 1px solid var(--table-control-border);
   border-radius: var(--border-radius);
   cursor: pointer;
   font-size: 0.95rem;
@@ -77,7 +77,7 @@
 }
 
 .settingsButton:hover {
-  background: #E5E7EB;
+  background: var(--admin-surface-hover);
 }
 
 /* Summary Cards */
@@ -89,11 +89,13 @@
 }
 
 .summaryCard {
-  background: white;
+  background: var(--surface-raised);
+  border: 1px solid var(--surface-raised-border);
   border-radius: var(--border-radius);
   padding: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  color: var(--text);
 }
 
 .summaryCard:hover {
@@ -122,7 +124,7 @@
 
 .summaryLabel {
   font-size: 0.95rem;
-  color: #6B7280;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
@@ -156,7 +158,7 @@
 }
 
 .sectionSubtitle {
-  color: #6B7280;
+  color: var(--text-muted);
   font-size: 0.95rem;
   margin: 0;
 }
@@ -169,7 +171,8 @@
 }
 
 .accountCard {
-  background: white;
+  background: var(--surface-raised);
+  border: 1px solid var(--surface-raised-border);
   border-radius: var(--border-radius);
   padding: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -177,6 +180,7 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  color: var(--text);
 }
 
 .accountCard:hover {
@@ -189,7 +193,7 @@
   align-items: flex-start;
   gap: 1rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid var(--table-row-divider);
 }
 
 .accountIcon {
@@ -233,13 +237,13 @@
 .balanceConverted {
   font-size: 0.9rem;
   font-weight: 500;
-  color: #6B7280;
+  color: var(--text-muted);
   opacity: 0.8;
 }
 
 .accountCurrency {
   font-size: 0.85rem;
-  color: #6B7280;
+  color: var(--text-muted);
   margin-top: 0.25rem;
 }
 
@@ -248,7 +252,7 @@
   border: none;
   padding: 0.5rem;
   cursor: pointer;
-  color: #6B7280;
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -258,7 +262,7 @@
 }
 
 .menuButton:hover {
-  background: #F3F4F6;
+  background: var(--admin-surface-hover);
   color: var(--text);
 }
 
@@ -266,8 +270,8 @@
   position: absolute;
   top: 100%;
   left: 0;
-  background: white;
-  border: 1px solid #E5E7EB;
+  background: var(--surface-raised);
+  border: 1px solid var(--surface-raised-border);
   border-radius: var(--border-radius);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   z-index: 100;
@@ -293,7 +297,7 @@
 }
 
 .menuItem:hover {
-  background: #F3F4F6;
+  background: var(--admin-surface-hover);
 }
 
 .menuItem svg {
@@ -310,11 +314,11 @@
 
 .dueDateIcon {
   font-size: 1rem;
-  color: #6B7280;
+  color: var(--text-muted);
 }
 
 .dueDateLabel {
-  color: #6B7280;
+  color: var(--text-muted);
 }
 
 .dueDate {
@@ -340,7 +344,7 @@
 .transactionsTitle {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #6B7280;
+  color: var(--text-muted);
   margin: 0 0 0.75rem 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -361,7 +365,7 @@
   align-items: flex-start;
   gap: 1rem;
   padding: 0.75rem;
-  background: #F9FAFB;
+  background: var(--surface-inset);
   border-radius: var(--border-radius);
 }
 
@@ -380,7 +384,7 @@
 
 .transactionDate {
   font-size: 0.8rem;
-  color: #6B7280;
+  color: var(--text-muted);
 }
 
 .transactionAmount {
@@ -393,11 +397,11 @@
   gap: 0.25rem;
 }
 
-.transactionAmount.credit {
+.credit {
   color: #16A34A;
 }
 
-.transactionAmount.debit {
+.debit {
   color: #DC2626;
 }
 
@@ -408,7 +412,7 @@
 }
 
 .noTransactions {
-  color: #9CA3AF;
+  color: var(--text-muted);
   font-size: 0.9rem;
   text-align: center;
   padding: 1rem;
@@ -421,8 +425,8 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.75rem;
-  background: var(--secondary);
-  border: 1px solid #E5E7EB;
+  background: var(--surface-inset);
+  border: 1px solid var(--table-control-border);
   border-radius: var(--border-radius);
   color: var(--text);
   font-size: 0.9rem;
@@ -462,9 +466,8 @@
 }
 
 .transferButton:hover {
-  background: #00000010;
-  border-color: #000000;
-
+  background: rgba(0, 0, 0, 0.12);
+  border-color: rgba(0, 0, 0, 0.35);
 }
 
 .transferButton svg {
@@ -527,7 +530,8 @@
 }
 
 .modal {
-  background: white;
+  background: var(--surface-raised);
+  border: 1px solid var(--surface-raised-border);
   border-radius: var(--border-radius);
   padding: 2rem;
   max-width: 600px;
@@ -535,6 +539,7 @@
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  color: var(--text);
 }
 
 .modalHeader {
@@ -543,7 +548,7 @@
   align-items: center;
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid var(--table-row-divider);
 }
 
 .modalTitle {
@@ -557,7 +562,7 @@
   background: none;
   border: none;
   font-size: 1.5rem;
-  color: #6B7280;
+  color: var(--text-muted);
   cursor: pointer;
   padding: 0;
   width: 2rem;
@@ -570,7 +575,7 @@
 }
 
 .closeButton:hover {
-  background: var(--secondary);
+  background: var(--admin-surface-hover);
   color: var(--text);
 }
 
@@ -599,19 +604,21 @@
 
 .helpText {
   font-size: 0.85rem;
-  color: #6B7280;
+  color: var(--text-muted);
   margin: 0;
 }
 
 .modalInput,
 .modalSelect {
   padding: 0.75rem;
-  border: 1px solid #D1D5DB;
+  border: 1px solid var(--table-control-border);
   border-radius: var(--border-radius);
   font-size: 0.95rem;
   font-family: 'Tajawal', sans-serif;
   transition: border-color 0.2s ease;
   direction: rtl;
+  background: var(--surface-inset);
+  color: var(--text);
 }
 
 .modalInput:focus,
@@ -627,7 +634,7 @@
   justify-content: flex-end;
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid var(--table-row-divider);
 }
 
 .modalSaveButton {
@@ -654,9 +661,9 @@
 
 .modalCancelButton {
   padding: 0.75rem 1.5rem;
-  background: var(--secondary);
+  background: var(--surface-inset);
   color: var(--text);
-  border: 1px solid #E5E7EB;
+  border: 1px solid var(--table-control-border);
   border-radius: var(--border-radius);
   cursor: pointer;
   font-size: 0.95rem;
@@ -666,7 +673,7 @@
 }
 
 .modalCancelButton:hover {
-  background: #E5E7EB;
+  background: var(--admin-surface-hover);
 }
 
 @media (max-width: 768px) {
@@ -685,3 +692,183 @@
   }
 }
 
+/* Inline-layout replacements: filters + data tables (dark admin) */
+.filtersPanel {
+  background: var(--surface-raised);
+  border: 1px solid var(--surface-raised-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  color: var(--text);
+}
+
+.filterLabel {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.filterControl {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--table-control-border);
+  border-radius: var(--border-radius);
+  font-size: 1rem;
+  background: var(--surface-inset);
+  color: var(--text);
+  font-family: 'Tajawal', sans-serif;
+}
+
+.tablePanel {
+  background: var(--surface-raised);
+  border: 1px solid var(--surface-raised-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  color: var(--text);
+}
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.dataTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.dataTable thead tr {
+  border-bottom: 2px solid var(--table-header-rule);
+}
+
+.dataTable th {
+  padding: 1rem;
+  text-align: right;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.dataTable td {
+  padding: 1rem;
+  text-align: right;
+  color: var(--text);
+  border-bottom: 1px solid var(--table-row-divider);
+}
+
+.dataTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.statePanel {
+  background: var(--surface-raised);
+  border: 1px solid var(--surface-raised-border);
+  border-radius: 12px;
+  padding: 3rem;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  color: var(--text);
+}
+
+.mutedSmall {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.panelPadded {
+  background: var(--surface-raised);
+  border: 1px solid var(--surface-raised-border);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  color: var(--text);
+}
+
+.listRowSplit {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--table-row-divider);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.listPlain .listRowSplit:last-child {
+  border-bottom: none;
+}
+
+.listPlain {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.emptyListHint {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.periodToolbar {
+  background: var(--surface-raised);
+  border: 1px solid var(--surface-raised-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+  color: var(--text);
+}
+
+.panelPaddedNarrow {
+  max-width: 600px;
+}
+
+.currencyHighlightBox {
+  background: var(--surface-inset);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+}
+
+.chipMuted {
+  padding: 0.5rem 1rem;
+  background: var(--surface-inset);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--text);
+}
+
+.transactionRowFlat {
+  padding: 1rem;
+  border-bottom: 1px solid var(--table-row-divider);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.transactionRowFlat:last-child {
+  border-bottom: none;
+}
+
+.settingsLinkSecondary {
+  padding: 0.75rem 1.5rem;
+  border: 1px solid var(--table-control-border);
+  border-radius: 8px;
+  background: var(--surface-inset);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 500;
+  display: inline-block;
+}

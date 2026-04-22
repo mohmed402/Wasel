@@ -16,7 +16,7 @@
 }
 
 .subtitle {
-  color: #6B7280;
+  color: var(--admin-muted);
   font-size: 1rem;
 }
 
@@ -28,7 +28,8 @@
 }
 
 .statCard {
-  background: white;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
   border-radius: var(--border-radius);
   padding: 1.5rem;
   display: flex;
@@ -82,7 +83,7 @@
 
 .statLabel {
   font-size: 0.9rem;
-  color: #6B7280;
+  color: var(--admin-muted);
   margin-bottom: 0.5rem;
   font-weight: 500;
 }
@@ -107,7 +108,8 @@
 }
 
 .content {
-  background: white;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
   border-radius: var(--border-radius);
   padding: 2rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -125,7 +127,7 @@
 }
 
 .sectionText {
-  color: #6B7280;
+  color: var(--admin-muted);
   line-height: 1.6;
   font-size: 1rem;
 }
