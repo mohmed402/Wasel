@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
-import { HiPlus, HiRefresh, HiTrash, HiPencil, HiEye, HiEyeOff, HiPhotograph, HiTag, HiCurrencyDollar } from 'react-icons/hi'
+import { HiPlus, HiRefresh, HiTrash, HiEye, HiEyeOff, HiPhotograph, HiTag, HiCurrencyDollar, HiCog } from 'react-icons/hi'
 import styles from './catalog-products.module.css'
 
 const EMPTY_FORM = {
@@ -13,18 +13,34 @@ const EMPTY_FORM = {
   currency: 'LYD',
   image_url: '',
   category: '',
+  quantity: '',
+  size: '',
   is_active: true,
   sort_order: 0,
 }
 
+const EMPTY_CATEGORY_SETTINGS_FORM = {
+  slug: '',
+  name_ar: '',
+  name: '',
+  sort_order: 100,
+}
+
 export default function CatalogProductsPage() {
   const [products, setProducts] = useState([])
+  const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [uploading, setUploading] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [showCategorySettings, setShowCategorySettings] = useState(false)
+  const [categoryAdminRows, setCategoryAdminRows] = useState([])
+  const [categorySettingsLoading, setCategorySettingsLoading] = useState(false)
+  const [categorySettingsError, setCategorySettingsError] = useState('')
+  const [categorySettingsForm, setCategorySettingsForm] = useState(EMPTY_CATEGORY_SETTINGS_FORM)
+  const [savingCategory, setSavingCategory] = useState(false)
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -42,7 +58,112 @@ export default function CatalogProductsPage() {
     }
   }, [])
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await fetch('/api/catalog/categories', { cache: 'no-store' })
+      if (!res.ok) return
+      const data = await res.json()
+      if (Array.isArray(data)) setCategories(data)
+    } catch {
+      /* ignore: table may not exist until SQL is applied */
+    }
+  }, [])
+
   useEffect(() => { fetchProducts() }, [fetchProducts])
+  useEffect(() => { fetchCategories() }, [fetchCategories])
+
+  const categoryLabelBySlug = useMemo(
+    () => Object.fromEntries(categories.map((c) => [c.slug, c.name_ar])),
+    [categories]
+  )
+
+  const fetchCategoryAdminList = useCallback(async ({ mergeSortOnly = false } = {}) => {
+    setCategorySettingsLoading(true)
+    if (!mergeSortOnly) setCategorySettingsError('')
+    try {
+      const res = await fetch('/api/catalog/categories?include_inactive=true', { cache: 'no-store' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'تعذر تحميل التصنيفات')
+      const list = Array.isArray(data) ? data : []
+      setCategoryAdminRows(list)
+      if (!mergeSortOnly) {
+        const maxSort = list.reduce((m, r) => Math.max(m, Number(r.sort_order) || 0), 0)
+        setCategorySettingsForm({ ...EMPTY_CATEGORY_SETTINGS_FORM, sort_order: maxSort + 10 })
+      }
+    } catch (e) {
+      setCategorySettingsError(e.message || 'حدث خطأ')
+      setCategoryAdminRows([])
+    } finally {
+      setCategorySettingsLoading(false)
+    }
+  }, [])
+
+  const openCategorySettings = useCallback(() => {
+    setShowCategorySettings(true)
+    setCategorySettingsError('')
+    fetchCategoryAdminList()
+  }, [fetchCategoryAdminList])
+
+  const closeCategorySettings = useCallback(() => {
+    setShowCategorySettings(false)
+    setCategorySettingsError('')
+  }, [])
+
+  const handleAddCategory = async (e) => {
+    e.preventDefault()
+    if (!categorySettingsForm.slug.trim()) {
+      setCategorySettingsError('المعرّف (slug) مطلوب')
+      return
+    }
+    if (!categorySettingsForm.name_ar.trim()) {
+      setCategorySettingsError('الاسم بالعربية مطلوب')
+      return
+    }
+    setSavingCategory(true)
+    setCategorySettingsError('')
+    try {
+      const res = await fetch('/api/catalog/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug: categorySettingsForm.slug,
+          name_ar: categorySettingsForm.name_ar,
+          name: categorySettingsForm.name || undefined,
+          sort_order: parseInt(categorySettingsForm.sort_order, 10) || 0,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'فشل إضافة التصنيف')
+      const created = data
+      const nextSort = (Number(created.sort_order) || 0) + 10
+      setCategorySettingsForm({ ...EMPTY_CATEGORY_SETTINGS_FORM, sort_order: nextSort })
+      await fetchCategoryAdminList({ mergeSortOnly: true })
+      await fetchCategories()
+    } catch (err) {
+      setCategorySettingsError(err.message || 'حدث خطأ')
+    } finally {
+      setSavingCategory(false)
+    }
+  }
+
+  const handleToggleCategoryActive = async (id, current) => {
+    setCategorySettingsError('')
+    try {
+      const res = await fetch(`/api/catalog/categories/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: !current }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'فشل التحديث')
+      setCategoryAdminRows((rows) =>
+        rows.map((r) => (r.id === id ? { ...r, is_active: !current } : r))
+      )
+      await fetchCategories()
+    } catch (err) {
+      setCategorySettingsError(err.message || 'حدث خطأ')
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -127,6 +248,15 @@ export default function CatalogProductsPage() {
           </button>
           <button
             type="button"
+            className={styles.btnSettings}
+            onClick={openCategorySettings}
+            title="إدارة تصنيفات الكتالوج"
+          >
+            <HiCog aria-hidden />
+            <span>التصنيفات</span>
+          </button>
+          <button
+            type="button"
             className={showForm ? styles.btnOutline : styles.btnPrimary}
             onClick={() => { setShowForm(!showForm); setError('') }}
           >
@@ -200,14 +330,64 @@ export default function CatalogProductsPage() {
               </div>
               <div className={styles.field}>
                 <label className={styles.label}>التصنيف</label>
-                <div className={styles.inputGroup}>
-                  <HiTag className={styles.inputIcon} />
-                  <input className={`${styles.input} ${styles.inputWithIcon}`} value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} placeholder="مثال: ملابس" />
-                </div>
+                {categories.length > 0 ? (
+                  <div className={styles.inputGroup}>
+                    <HiTag className={styles.inputIcon} />
+                    <select
+                      className={`${styles.select} ${styles.inputWithIcon}`}
+                      value={form.category}
+                      onChange={(e) => setForm({ ...form, category: e.target.value })}
+                      aria-label="التصنيف"
+                    >
+                      <option value="">— بدون تصنيف —</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.slug}>
+                          {c.name_ar}{c.name ? ` (${c.name})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className={styles.inputGroup}>
+                    <HiTag className={styles.inputIcon} />
+                    <input
+                      className={`${styles.input} ${styles.inputWithIcon}`}
+                      value={form.category}
+                      onChange={(e) => setForm({ ...form, category: e.target.value })}
+                      placeholder="نفّذ SQL التصنيفات أو أدخل slug (مثال: clothes)"
+                      dir="ltr"
+                    />
+                  </div>
+                )}
               </div>
               <div className={styles.field}>
                 <label className={styles.label}>ترتيب العرض</label>
                 <input className={styles.input} type="number" value={form.sort_order} onChange={e => setForm({ ...form, sort_order: parseInt(e.target.value, 10) || 0 })} />
+              </div>
+            </div>
+
+            <div className={styles.formGrid2}>
+              <div className={styles.field}>
+                <label className={styles.label}>الكمية المتوفرة (المخزون)</label>
+                <input
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  value={form.quantity}
+                  onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+                  placeholder="فارغ = غير محدودة"
+                />
+                <p className={styles.fieldHint}>0 يعني نفاد المخزون. اتركه فارغاً إذا لا تريد حداً.</p>
+              </div>
+              <div className={styles.field}>
+                <label className={styles.label}>المقاس / الحجم</label>
+                <input
+                  className={styles.input}
+                  dir="rtl"
+                  value={form.size}
+                  onChange={(e) => setForm({ ...form, size: e.target.value })}
+                  placeholder="مثال: M أو 42"
+                />
               </div>
             </div>
 
@@ -304,6 +484,8 @@ export default function CatalogProductsPage() {
                 <th>المنتج</th>
                 <th>السعر</th>
                 <th>التصنيف</th>
+                <th>المقاس</th>
+                <th>المخزون</th>
                 <th>الترتيب</th>
                 <th>الحالة</th>
                 <th>إجراءات</th>
@@ -339,8 +521,23 @@ export default function CatalogProductsPage() {
                   {/* Category */}
                   <td>
                     {p.category
-                      ? <span className={styles.categoryBadge}>{p.category}</span>
+                      ? (
+                        <span className={styles.categoryBadge} title={p.category}>
+                          {categoryLabelBySlug[p.category] || p.category}
+                        </span>
+                      )
                       : <span className={styles.dash}>—</span>}
+                  </td>
+
+                  <td>
+                    {p.size ? <span className={styles.sizeBadge}>{p.size}</span> : <span className={styles.dash}>—</span>}
+                  </td>
+                  <td>
+                    {p.quantity == null ? (
+                      <span className={styles.stockUnlimited}>غير محدود</span>
+                    ) : (
+                      <span className={p.quantity === 0 ? styles.stockZero : styles.stockQty}>{p.quantity}</span>
+                    )}
                   </td>
 
                   {/* Sort order */}
@@ -375,6 +572,137 @@ export default function CatalogProductsPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {showCategorySettings && (
+        <div
+          className={styles.settingsOverlay}
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeCategorySettings()
+          }}
+        >
+          <div className={styles.settingsPanel} role="dialog" aria-labelledby="category-settings-title">
+            <div className={styles.settingsPanelHeader}>
+              <h2 id="category-settings-title" className={styles.settingsPanelTitle}>
+                إعدادات التصنيفات
+              </h2>
+              <div className={styles.settingsPanelHeaderActions}>
+                <button
+                  type="button"
+                  className={styles.btnGhost}
+                  onClick={() => fetchCategoryAdminList({ mergeSortOnly: true })}
+                  disabled={categorySettingsLoading}
+                >
+                  <HiRefresh className={categorySettingsLoading ? styles.spinning : ''} />
+                  <span>تحديث القائمة</span>
+                </button>
+                <button type="button" className={styles.settingsClose} onClick={closeCategorySettings} aria-label="إغلاق">
+                  ×
+                </button>
+              </div>
+            </div>
+            <p className={styles.settingsHint}>
+              المعرّف (slug) يُستخدم في الروابط والفلترة؛ أحرف إنجليزية وأرقام وشرطة فقط (مثل <code dir="ltr">kids-shoes</code>).
+            </p>
+
+            {categorySettingsError && (
+              <div className={styles.settingsError}>{categorySettingsError}</div>
+            )}
+
+            <form className={styles.settingsForm} onSubmit={handleAddCategory}>
+              <div className={styles.settingsFormGrid}>
+                <div className={styles.field}>
+                  <label className={styles.label}>المعرّف (slug) <span className={styles.required}>*</span></label>
+                  <input
+                    className={styles.input}
+                    dir="ltr"
+                    value={categorySettingsForm.slug}
+                    onChange={(e) => setCategorySettingsForm((f) => ({ ...f, slug: e.target.value }))}
+                    placeholder="e.g. kids-shoes"
+                    autoComplete="off"
+                  />
+                </div>
+                <div className={styles.field}>
+                  <label className={styles.label}>الاسم بالعربية <span className={styles.required}>*</span></label>
+                  <input
+                    className={styles.input}
+                    dir="rtl"
+                    value={categorySettingsForm.name_ar}
+                    onChange={(e) => setCategorySettingsForm((f) => ({ ...f, name_ar: e.target.value }))}
+                    placeholder="مثال: أحذية أطفال"
+                  />
+                </div>
+                <div className={styles.field}>
+                  <label className={styles.label}>الاسم بالإنجليزية</label>
+                  <input
+                    className={styles.input}
+                    dir="ltr"
+                    value={categorySettingsForm.name}
+                    onChange={(e) => setCategorySettingsForm((f) => ({ ...f, name: e.target.value }))}
+                    placeholder="Optional"
+                  />
+                </div>
+                <div className={styles.field}>
+                  <label className={styles.label}>ترتيب العرض</label>
+                  <input
+                    className={styles.input}
+                    type="number"
+                    value={categorySettingsForm.sort_order}
+                    onChange={(e) =>
+                      setCategorySettingsForm((f) => ({
+                        ...f,
+                        sort_order: parseInt(e.target.value, 10) || 0,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              <div className={styles.settingsFormFooter}>
+                <button type="submit" className={styles.btnPrimary} disabled={savingCategory || categorySettingsLoading}>
+                  {savingCategory ? (
+                    <>
+                      <span className={styles.btnSpinner} /> جاري الإضافة...
+                    </>
+                  ) : (
+                    <>
+                      <HiPlus /> إضافة تصنيف
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+
+            <div className={styles.settingsListSection}>
+              <h3 className={styles.settingsListTitle}>التصنيفات الحالية</h3>
+              {categorySettingsLoading && categoryAdminRows.length === 0 ? (
+                <div className={styles.settingsLoading}>جاري التحميل...</div>
+              ) : categoryAdminRows.length === 0 ? (
+                <div className={styles.settingsEmpty}>لا توجد تصنيفات بعد. أضف أول تصنيف أعلاه.</div>
+              ) : (
+                <ul className={styles.settingsList}>
+                  {categoryAdminRows.map((c) => (
+                    <li key={c.id} className={styles.settingsListItem}>
+                      <div className={styles.settingsListMain}>
+                        <span className={styles.settingsListNameAr}>{c.name_ar}</span>
+                        {c.name ? <span className={styles.settingsListNameEn}>{c.name}</span> : null}
+                        <code className={styles.settingsListSlug} dir="ltr">{c.slug}</code>
+                        <span className={styles.settingsListSort}>ترتيب: {c.sort_order}</span>
+                      </div>
+                      <button
+                        type="button"
+                        className={`${styles.statusBtn} ${c.is_active ? styles.statusBtnActive : styles.statusBtnHidden}`}
+                        onClick={() => handleToggleCategoryActive(c.id, c.is_active)}
+                      >
+                        {c.is_active ? <><HiEye /> ظاهر</> : <><HiEyeOff /> مخفي</>}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -1355,7 +1355,7 @@ const catalogProductOperations = {
     if (!client) throw new Error('Supabase client not initialized')
     let query = client
       .from('catalog_products')
-      .select('id, name, name_ar, description, description_ar, price, currency, image_url, images, category')
+      .select('id, name, name_ar, description, description_ar, price, currency, image_url, images, category, quantity, size')
       .eq('is_active', true)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false })
@@ -1409,6 +1409,8 @@ const catalogProductOperations = {
         image_url: row.image_url,
         images: row.images || [],
         category: row.category,
+        quantity: catalogProductOperations._parseOptionalStock(row.quantity),
+        size: row.size != null && String(row.size).trim() ? String(row.size).trim() : null,
         is_active: row.is_active !== false,
         sort_order: parseInt(row.sort_order, 10) || 0,
         updated_at: new Date().toISOString()
@@ -1419,11 +1421,23 @@ const catalogProductOperations = {
     return data
   },
 
+  _parseOptionalStock(v) {
+    if (v === '' || v === undefined || v === null) return null
+    const n = parseInt(String(v), 10)
+    if (Number.isNaN(n) || n < 0) return null
+    return n
+  },
+
   async update(id, updates) {
     if (!supabaseAdmin) throw new Error('Supabase admin client not initialized')
-    const allowed = ['name', 'name_ar', 'description', 'description_ar', 'price', 'currency', 'image_url', 'images', 'category', 'is_active', 'sort_order']
+    const allowed = ['name', 'name_ar', 'description', 'description_ar', 'price', 'currency', 'image_url', 'images', 'category', 'is_active', 'sort_order', 'quantity', 'size']
     const clean = {}
-    allowed.forEach(k => { if (updates[k] !== undefined) clean[k] = updates[k] })
+    allowed.forEach((k) => {
+      if (updates[k] === undefined) return
+      if (k === 'quantity') clean[k] = catalogProductOperations._parseOptionalStock(updates[k])
+      else if (k === 'size') clean[k] = updates[k] != null && String(updates[k]).trim() ? String(updates[k]).trim() : null
+      else clean[k] = updates[k]
+    })
     clean.updated_at = new Date().toISOString()
     const { data, error } = await supabaseAdmin
       .from('catalog_products')
@@ -1442,6 +1456,97 @@ const catalogProductOperations = {
   }
 }
 
+/**
+ * Catalog categories (slug + Arabic label). catalog_products.category stores slug.
+ */
+function normalizeCatalogSlug(raw) {
+  if (raw == null || typeof raw !== 'string') return ''
+  const s = raw
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9_-]/g, '')
+  return s
+}
+
+const catalogCategoryOperations = {
+  /**
+   * Active categories for storefront and admin dropdowns.
+   * @returns {Promise<Array<{ id, slug, name_ar, name, sort_order }>>}
+   */
+  async getAllActive() {
+    const client = supabaseAdmin || supabase
+    if (!client) throw new Error('Supabase client not initialized')
+    const { data, error } = await client
+      .from('catalog_categories')
+      .select('id, slug, name_ar, name, sort_order')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .order('name_ar', { ascending: true })
+    if (error) throw error
+    return data || []
+  },
+
+  /**
+   * All categories including inactive (admin / settings UI). Service role only.
+   */
+  async getAllForAdmin() {
+    if (!supabaseAdmin) throw new Error('Supabase admin client not initialized')
+    const { data, error } = await supabaseAdmin
+      .from('catalog_categories')
+      .select('id, slug, name_ar, name, sort_order, is_active')
+      .order('sort_order', { ascending: true })
+      .order('name_ar', { ascending: true })
+    if (error) throw error
+    return data || []
+  },
+
+  async create(row) {
+    if (!supabaseAdmin) throw new Error('Supabase admin client not initialized')
+    const slug = normalizeCatalogSlug(row.slug)
+    if (!slug) throw new Error('slug مطلوب: أحرف إنجليزية وأرقام وشرطة فقط (مثل clothes)')
+    const name_ar = (row.name_ar && String(row.name_ar).trim()) || ''
+    if (!name_ar) throw new Error('الاسم بالعربية مطلوب')
+    const { data, error } = await supabaseAdmin
+      .from('catalog_categories')
+      .insert([{
+        slug,
+        name_ar,
+        name: row.name != null && String(row.name).trim() ? String(row.name).trim() : null,
+        sort_order: parseInt(row.sort_order, 10) || 0,
+        is_active: row.is_active !== false,
+        updated_at: new Date().toISOString()
+      }])
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  },
+
+  async update(id, updates) {
+    if (!supabaseAdmin) throw new Error('Supabase admin client not initialized')
+    const allowed = ['name_ar', 'name', 'sort_order', 'is_active']
+    const clean = {}
+    allowed.forEach((k) => {
+      if (updates[k] === undefined) return
+      if (k === 'name_ar') clean[k] = String(updates[k]).trim()
+      else if (k === 'name') clean[k] = updates[k] != null && String(updates[k]).trim() ? String(updates[k]).trim() : null
+      else if (k === 'sort_order') clean[k] = parseInt(updates[k], 10) || 0
+      else if (k === 'is_active') clean[k] = Boolean(updates[k])
+    })
+    if (Object.keys(clean).length === 0) throw new Error('لا حقول للتحديث')
+    clean.updated_at = new Date().toISOString()
+    const { data, error } = await supabaseAdmin
+      .from('catalog_categories')
+      .update(clean)
+      .eq('id', id)
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  }
+}
+
 module.exports = {
   supabase,
   supabaseAdmin,
@@ -1452,7 +1557,8 @@ module.exports = {
   financialAccount: financialAccountOperations,
   financialTransaction: financialTransactionOperations,
   financialSettings: financialSettingsOperations,
-  catalogProduct: catalogProductOperations
+  catalogProduct: catalogProductOperations,
+  catalogCategory: catalogCategoryOperations
 }
 
 

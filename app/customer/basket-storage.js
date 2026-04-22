@@ -2,7 +2,7 @@
  * Customer basket in localStorage (catalog + Shein lines).
  * Key: wasel_customer_basket
  * Shape: { items: [...], meta?: { sheinCartShareUrl?: string } }
- * Catalog: { type: 'catalog', id, name, name_ar, price, currency, image_url, quantity }
+ * Catalog: { type: 'catalog', id, name, name_ar, price, currency, image_url, quantity, size?, max_stock? }
  * Shein: { type: 'shein', sheinKey, productId?, sku?, name, price, currency, image_url, quantity, variant?, source_url? }
  */
 
@@ -60,8 +60,30 @@ export function setBasket(basket) {
   }
 }
 
+/** Stock cap from catalog product: null = unlimited, 0 = sold out, N = max pieces */
+export function parseCatalogStockLimit(catalogItem) {
+  if (!catalogItem) return null
+  const v = catalogItem.quantity
+  if (v === '' || v === undefined || v === null) return null
+  const n = typeof v === 'number' ? v : parseInt(String(v), 10)
+  if (Number.isNaN(n) || n < 0) return null
+  return n
+}
+
+/**
+ * @returns {{ ok: true, basket: object } | { ok: false, reason: 'out_of_stock'|'max_stock', basket: object }}
+ */
 export function addToBasket(catalogItem, quantity = 1) {
   const basket = getBasket()
+  const cap = parseCatalogStockLimit(catalogItem)
+  if (cap === 0) {
+    return { ok: false, reason: 'out_of_stock', basket }
+  }
+  const addQty = Math.max(1, parseInt(quantity, 10) || 1)
+  const size =
+    catalogItem.size != null && String(catalogItem.size).trim()
+      ? String(catalogItem.size).trim()
+      : null
   const entry = {
     type: 'catalog',
     id: catalogItem.id,
@@ -70,16 +92,25 @@ export function addToBasket(catalogItem, quantity = 1) {
     price: parseFloat(catalogItem.price) || 0,
     currency: catalogItem.currency || 'LYD',
     image_url: catalogItem.image_url || (catalogItem.images && catalogItem.images[0]),
-    quantity: Math.max(1, parseInt(quantity, 10) || 1),
+    quantity: cap != null ? Math.min(addQty, cap) : addQty,
+    size,
+    max_stock: cap,
   }
   const idx = basket.items.findIndex((i) => i.type === 'catalog' && i.id === catalogItem.id)
   if (idx >= 0) {
-    basket.items[idx].quantity += entry.quantity
+    if (cap != null) basket.items[idx].max_stock = cap
+    if (size) basket.items[idx].size = size
+    const next = basket.items[idx].quantity + addQty
+    const capped = cap == null ? next : Math.min(next, cap)
+    if (capped <= basket.items[idx].quantity) {
+      return { ok: false, reason: 'max_stock', basket }
+    }
+    basket.items[idx].quantity = capped
   } else {
     basket.items.push(entry)
   }
   setBasket({ items: basket.items, meta: basket.meta })
-  return getBasket()
+  return { ok: true, basket: getBasket() }
 }
 
 export function removeFromBasket(catalogId) {
@@ -93,7 +124,13 @@ export function updateBasketQuantity(catalogId, quantity) {
   const basket = getBasket()
   const item = basket.items.find((i) => i.type === 'catalog' && i.id === catalogId)
   if (item) {
-    item.quantity = Math.max(0, parseInt(quantity, 10) || 0)
+    let q = Math.max(0, parseInt(quantity, 10) || 0)
+    const capRaw = item.max_stock
+    if (capRaw !== undefined && capRaw !== null && capRaw !== '') {
+      const cap = parseInt(String(capRaw), 10)
+      if (!Number.isNaN(cap) && cap >= 0) q = Math.min(q, cap)
+    }
+    item.quantity = q
     if (item.quantity === 0) basket.items = basket.items.filter((i) => i !== item)
   }
   setBasket({ items: basket.items, meta: basket.meta })

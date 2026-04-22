@@ -2106,8 +2106,18 @@ font-family: 'Tajawal' !important;
   line-clamp: 2;
   -webkit-box-orient: vertical; overflow: hidden;
 }
-.productCardCategory { font-size: 0.78rem; color: rgba(234,234,234,0.48); margin-bottom: 0.5rem; }
-.productCardPrice { font-size: 1.1rem; font-weight: 800; color: #08af66; }
+.productCardCategory { font-size: 0.78rem; color: rgba(234,234,234,0.48); margin-bottom: 0.35rem; }
+.productCardSize {
+  font-size: 0.76rem;
+  color: rgba(234,234,234,0.55);
+  margin-bottom: 0.25rem;
+}
+.productCardStock {
+  font-size: 0.76rem;
+  color: rgba(234,234,234,0.62);
+  margin-bottom: 0.45rem;
+}
+.productCardPrice { font-size: 1.1rem; font-weight: 800; color: #08af66; margin-top: 0.15rem; }
 .addToBasketBtn {
   width: 100%; margin-top: 0.75rem;
   padding: 0.65rem 1rem;
@@ -2120,8 +2130,8 @@ font-family: 'Tajawal' !important;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
-.addToBasketBtn:hover { opacity: 0.9; transform: translateY(-1px); }
-.addToBasketBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+.addToBasketBtn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+.addToBasketBtn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
 .productsToolbar {
   margin-bottom: 1.35rem;
@@ -2344,6 +2354,16 @@ font-family: 'Tajawal' !important;
   font-size: 0.9rem;
 }
 .addToastClose:hover { color: rgba(232,232,234,0.7); background: rgba(255,255,255,0.06); }
+
+.addToastError {
+  border-color: rgba(248, 113, 113, 0.45);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(248,113,113,0.12) inset;
+}
+.addToastError .addToastTitle {
+  color: #fecaca;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
 
 /* ── Logged-in info card (basket checkout) ───────────────── */
 .loggedInfoCard {

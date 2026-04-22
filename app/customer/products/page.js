@@ -11,7 +11,7 @@ import {
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import styles from '../customer.module.css'
-import { getBasket, addToBasket } from '../basket-storage'
+import { getBasket, addToBasket, parseCatalogStockLimit } from '../basket-storage'
 import CustomerSiteHeader from '../CustomerSiteHeader'
 import { HiSearch, HiX, HiCheckCircle, HiShoppingBag } from 'react-icons/hi'
 
@@ -20,12 +20,13 @@ function normalizeForSearch(s) {
   return s.toLowerCase().trim()
 }
 
-function productMatches(p, qRaw, categorySlug) {
+function productMatches(p, qRaw, categorySlug, categoryLabels = {}) {
   if (categorySlug && (p.category || '') !== categorySlug) return false
   const q = normalizeForSearch(qRaw)
   if (!q) return true
+  const catForSearch = categoryLabels[p.category] || p.category
   const hay = normalizeForSearch(
-    [p.name, p.name_ar, p.category, p.description, p.description_ar]
+    [p.name, p.name_ar, catForSearch, p.size, p.description, p.description_ar]
       .filter(Boolean)
       .join(' ')
   )
@@ -40,6 +41,7 @@ function ProductsView() {
   const searchParams = useSearchParams()
 
   const [products, setProducts] = useState([])
+  const [categoriesFromApi, setCategoriesFromApi] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [basketCount, setBasketCount] = useState(0)
@@ -83,27 +85,48 @@ function ProductsView() {
       setLoading(true)
       setError('')
       try {
-        const res = await fetch('/api/catalog/products', { cache: 'no-store' })
-        const raw = await res.text()
-        let data
+        const [prodRes, catRes] = await Promise.all([
+          fetch('/api/catalog/products', { cache: 'no-store' }),
+          fetch('/api/catalog/categories', { cache: 'no-store' }),
+        ])
+        const prodRaw = await prodRes.text()
+        let prodData
         try {
-          data = raw ? JSON.parse(raw) : []
+          prodData = prodRaw ? JSON.parse(prodRaw) : []
         } catch {
           throw new Error('استجابة غير صالحة من الخادم')
         }
-        if (!res.ok) {
-          const msg = data?.error || data?.message || 'فشل تحميل المنتجات'
+        if (!prodRes.ok) {
+          const msg = prodData?.error || prodData?.message || 'فشل تحميل المنتجات'
           throw new Error(typeof msg === 'string' ? msg : 'فشل تحميل المنتجات')
         }
-        const list = Array.isArray(data) ? data : Array.isArray(data?.products) ? data.products : []
+        const list = Array.isArray(prodData)
+          ? prodData
+          : Array.isArray(prodData?.products)
+            ? prodData.products
+            : []
+
+        let catList = []
+        if (catRes.ok) {
+          const catRaw = await catRes.text()
+          try {
+            const parsed = catRaw ? JSON.parse(catRaw) : []
+            if (Array.isArray(parsed)) catList = parsed
+          } catch {
+            /* ignore */
+          }
+        }
+
         if (!cancelled) {
           setProducts(list)
+          setCategoriesFromApi(catList)
           setError('')
         }
       } catch (e) {
         if (!cancelled) {
           setError(e.message || 'حدث خطأ')
           setProducts([])
+          setCategoriesFromApi([])
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -115,17 +138,36 @@ function ProductsView() {
     }
   }, [])
 
+  const categoryLabelBySlug = useMemo(
+    () => Object.fromEntries(categoriesFromApi.map((c) => [c.slug, c.name_ar])),
+    [categoriesFromApi]
+  )
+
   const categories = useMemo(() => {
+    if (categoriesFromApi.length > 0) {
+      return [...categoriesFromApi].sort(
+        (a, b) =>
+          (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0) ||
+          String(a.name_ar).localeCompare(String(b.name_ar), 'ar')
+      )
+    }
     const set = new Set()
     products.forEach((p) => {
       if (p.category && String(p.category).trim()) set.add(String(p.category).trim())
     })
-    return [...set].sort((a, b) => a.localeCompare(b, 'ar'))
-  }, [products])
+    return [...set].sort((a, b) => a.localeCompare(b, 'ar')).map((slug) => ({
+      slug,
+      name_ar: slug,
+      sort_order: 0,
+    }))
+  }, [categoriesFromApi, products])
 
   const filteredProducts = useMemo(
-    () => products.filter((p) => productMatches(p, searchInput, categoryParam)),
-    [products, searchInput, categoryParam]
+    () =>
+      products.filter((p) =>
+        productMatches(p, searchInput, categoryParam, categoryLabelBySlug)
+      ),
+    [products, searchInput, categoryParam, categoryLabelBySlug]
   )
 
   const setCategoryFilter = useCallback(
@@ -166,15 +208,23 @@ function ProductsView() {
       {/* Toast notification */}
       {toast && (
         <div className={styles.addToastWrap} role="status" aria-live="polite">
-          <div className={styles.addToast}>
-            <HiCheckCircle className={styles.addToastIcon} aria-hidden />
-            <div className={styles.addToastText}>
-              <span className={styles.addToastTitle}>تمت الإضافة إلى السلة</span>
-              <span className={styles.addToastName}>{toast.name}</span>
-            </div>
-            <Link href="/customer/basket" className={styles.addToastBtn}>
-              <HiShoppingBag aria-hidden /> عرض السلة
-            </Link>
+          <div className={`${styles.addToast} ${toast.error ? styles.addToastError : ''}`}>
+            {toast.error ? (
+              <div className={styles.addToastText}>
+                <span className={styles.addToastTitle}>{toast.error}</span>
+              </div>
+            ) : (
+              <>
+                <HiCheckCircle className={styles.addToastIcon} aria-hidden />
+                <div className={styles.addToastText}>
+                  <span className={styles.addToastTitle}>تمت الإضافة إلى السلة</span>
+                  <span className={styles.addToastName}>{toast.name}</span>
+                </div>
+                <Link href="/customer/basket" className={styles.addToastBtn}>
+                  <HiShoppingBag aria-hidden /> عرض السلة
+                </Link>
+              </>
+            )}
             <button type="button" className={styles.addToastClose} onClick={() => { clearTimeout(toastTimer.current); setToast(null) }} aria-label="إغلاق">
               <HiX aria-hidden />
             </button>
@@ -229,16 +279,16 @@ function ProductsView() {
               </button>
               {categories.map((c) => (
                 <button
-                  key={c}
+                  key={c.slug}
                   type="button"
                   className={
-                    categoryParam === c
+                    categoryParam === c.slug
                       ? `${styles.productsCategoryChip} ${styles.productsCategoryChipActive}`
                       : styles.productsCategoryChip
                   }
-                  onClick={() => setCategoryFilter(c)}
+                  onClick={() => setCategoryFilter(c.slug)}
                 >
-                  {c}
+                  {c.name_ar}
                 </button>
               ))}
             </div>
@@ -262,7 +312,9 @@ function ProductsView() {
         )}
         {!loading && filteredProducts.length > 0 && (
           <ul className={styles.productGrid}>
-            {filteredProducts.map((p) => (
+            {filteredProducts.map((p) => {
+              const stock = parseCatalogStockLimit(p)
+              return (
               <li key={p.id} className={styles.productCard}>
                 <div className={styles.productCardImageWrap}>
                   {(p.image_url || (p.images && p.images[0])) ? (
@@ -292,25 +344,47 @@ function ProductsView() {
                 </div>
                 <div className={styles.productCardBody}>
                   <h2 className={styles.productCardName}>{p.name_ar || p.name}</h2>
-                  {p.category && <div className={styles.productCardCategory}>{p.category}</div>}
+                  {p.category && (
+                    <div className={styles.productCardCategory}>
+                      {categoryLabelBySlug[p.category] || p.category}
+                    </div>
+                  )}
+                  {p.size ? (
+                    <div className={styles.productCardSize}>المقاس: {p.size}</div>
+                  ) : null}
+                  {stock != null ? (
+                    <div className={styles.productCardStock}>
+                      {stock === 0 ? 'غير متوفر' : `المتوفر: ${stock}`}
+                    </div>
+                  ) : null}
                   <div className={styles.productCardPrice}>{formatPrice(p.price, p.currency)}</div>
                   <button
                     type="button"
                     className={styles.addToBasketBtn}
+                    disabled={stock === 0}
                     onClick={() => {
-                      addToBasket(p, 1)
+                      const res = addToBasket(p, 1)
                       refreshBasketCount()
-                      // Show toast notification
                       clearTimeout(toastTimer.current)
-                      setToast({ name: p.name_ar || p.name, id: p.id })
+                      if (!res.ok) {
+                        setToast({
+                          error:
+                            res.reason === 'out_of_stock'
+                              ? 'المنتج غير متوفر حالياً'
+                              : 'لا يمكن إضافة أكثر من الكمية المتوفرة في المخزون',
+                        })
+                      } else {
+                        setToast({ name: p.name_ar || p.name, id: p.id })
+                      }
                       toastTimer.current = setTimeout(() => setToast(null), 3000)
                     }}
                   >
-                    إضافة إلى السلة
+                    {stock === 0 ? 'غير متوفر' : 'إضافة إلى السلة'}
                   </button>
                 </div>
               </li>
-            ))}
+              )
+            })}
           </ul>
         )}
 

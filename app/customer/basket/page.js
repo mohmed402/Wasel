@@ -365,6 +365,14 @@ export default function CustomerBasketPage() {
   const totalLyd = selectedMethod ? totalForMethod(selectedMethod) : subtotalLyd
   const unitCount = items.reduce((n, i) => n + (i.quantity || 0), 0)
 
+  const catalogStockCap = (item) => {
+    if (item.type !== 'catalog') return null
+    const m = item.max_stock
+    if (m === undefined || m === null || m === '') return null
+    const n = parseInt(String(m), 10)
+    return Number.isNaN(n) ? null : n
+  }
+
   const bumpQuantity = (item, delta) => {
     const next = (item.quantity || 0) + delta
     if (item.type === 'shein') updateSheinQuantity(item.sheinKey, next)
@@ -474,6 +482,8 @@ export default function CustomerBasketPage() {
                   {items.map((item) => {
                     const key = item.type === 'shein' ? item.sheinKey : `cat-${item.id}`
                     const label = item.type === 'shein' ? 'Shein' : 'محلي'
+                    const cap = catalogStockCap(item)
+                    const atMax = item.type === 'catalog' && cap != null && (item.quantity || 0) >= cap
                     return (
                       <li key={key} className={styles.basketItem}>
                         {item.image_url ? (
@@ -486,13 +496,14 @@ export default function CustomerBasketPage() {
                           <div className={styles.basketItemMeta}>
                             <span>{label}</span>
                             {item.variant && <span> · {item.variant}</span>}
+                            {item.type === 'catalog' && item.size && <span> · المقاس: {item.size}</span>}
                             <span> · {item.currency === 'LYD' ? `${formatLyd(item.price)} د.ل` : `${formatUsd(item.price)} ${item.currency}`} للوحدة</span>
                           </div>
                         </div>
                         <div className={styles.basketQtyControl} aria-label="الكمية">
                           <button type="button" className={styles.basketQtyBtn} onClick={() => bumpQuantity(item, -1)} disabled={(item.quantity || 0) <= 1} aria-label="تقليل الكمية">−</button>
                           <span className={styles.basketQtyValue}>{item.quantity || 0}</span>
-                          <button type="button" className={styles.basketQtyBtn} onClick={() => bumpQuantity(item, 1)} aria-label="زيادة الكمية">+</button>
+                          <button type="button" className={styles.basketQtyBtn} onClick={() => bumpQuantity(item, 1)} disabled={atMax} aria-label="زيادة الكمية">+</button>
                         </div>
                         <span className={styles.basketItemPrice}>{formatLyd(lineTotalLyd(item))} د.ل</span>
                         <button type="button" className={styles.removeBtn} onClick={() => { removeBasketLine(item); refresh() }} aria-label="إزالة"><HiX /></button>

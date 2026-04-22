@@ -132,6 +132,27 @@
   }
   .btnGhost:hover:not(:disabled) { background: var(--surface-subtle); color: var(--text-primary); }
   .btnGhost:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btnSettings {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 0.95rem;
+    background: var(--surface);
+    color: var(--accent);
+    border: 1px solid #99f6e4;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    box-shadow: var(--shadow-sm);
+  }
+  .btnSettings:hover {
+    background: var(--accent-light);
+    border-color: var(--accent);
+  }
+  .btnSettings svg { font-size: 1.05rem; flex-shrink: 0; }
   
   .btnOutline {
     display: inline-flex;
@@ -565,6 +586,40 @@
   }
   
   .dash { color: var(--text-tertiary); }
+
+  .fieldHint {
+    margin: 0.35rem 0 0;
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+    line-height: 1.4;
+  }
+
+  .sizeBadge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+  }
+
+  .stockUnlimited {
+    font-size: 0.78rem;
+    color: var(--text-tertiary);
+  }
+
+  .stockQty {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+  }
+
+  .stockZero {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--red);
+  }
   
   .sortOrder {
     display: inline-flex;
@@ -617,4 +672,188 @@
     background: var(--red-bg);
     color: var(--red);
     border-color: #fca5a5;
+  }
+
+  /* ── Category settings modal ───────────────────────── */
+  .settingsOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    background: rgba(17, 24, 39, 0.45);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 1.5rem 1rem 2rem;
+    overflow-y: auto;
+    backdrop-filter: blur(2px);
+  }
+
+  .settingsPanel {
+    width: 100%;
+    max-width: 560px;
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-md);
+    padding: 1.25rem 1.35rem 1.5rem;
+    margin-top: 0.5rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+  }
+
+  .settingsPanelHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.65rem;
+    flex-wrap: wrap;
+  }
+
+  .settingsPanelTitle {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .settingsPanelHeaderActions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+  }
+
+  .settingsClose {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: var(--surface-subtle);
+    border-radius: var(--radius-sm);
+    font-size: 1.35rem;
+    line-height: 1;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .settingsClose:hover {
+    background: var(--border);
+    color: var(--text-primary);
+  }
+
+  .settingsHint {
+    margin: 0 0 1rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .settingsHint code {
+    font-size: 0.78rem;
+    background: var(--surface-subtle);
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+  }
+
+  .settingsError {
+    padding: 0.6rem 0.85rem;
+    background: var(--red-bg);
+    border: 1px solid #fca5a5;
+    border-radius: var(--radius-sm);
+    color: var(--red);
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+  }
+
+  .settingsForm {
+    margin-bottom: 1.25rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .settingsFormGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem 1rem;
+  }
+  @media (max-width: 520px) {
+    .settingsFormGrid { grid-template-columns: 1fr; }
+  }
+
+  .settingsFormFooter {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  .settingsListSection {
+    margin-top: 0.25rem;
+  }
+
+  .settingsListTitle {
+    margin: 0 0 0.65rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .settingsLoading,
+  .settingsEmpty {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    padding: 0.5rem 0;
+  }
+
+  .settingsList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .settingsListItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.65rem 0.75rem;
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    flex-wrap: wrap;
+  }
+
+  .settingsListMain {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .settingsListNameAr {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+  }
+
+  .settingsListNameEn {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+  }
+
+  .settingsListSlug {
+    font-size: 0.75rem;
+    color: #0369a1;
+    background: #e0f2fe;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    margin-top: 0.15rem;
+  }
+
+  .settingsListSort {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
   }

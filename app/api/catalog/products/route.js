@@ -30,7 +30,7 @@ export async function GET(request) {
 
 /**
  * POST /api/catalog/products
- * Create a catalog product (admin). Body: name, name_ar?, description?, description_ar?, price, currency?, image_url?, images?, category?, is_active?, sort_order?
+ * Create a catalog product (admin). Body: name, name_ar?, description?, description_ar?, price, currency?, image_url?, images?, category?, quantity? (stock, empty = unlimited), size?, is_active?, sort_order?
  */
 export async function POST(request) {
   try {
