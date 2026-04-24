@@ -5,7 +5,7 @@ import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
-import styles from './dashboard.module.css'
+import styles from './Dashboard.module.css'
 
 function formatRelativeAr(iso) {
   if (!iso) return ''
