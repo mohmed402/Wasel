@@ -77,6 +77,7 @@ export default function Sidebar() {
       icon: HiShoppingBag,
       children: [
         { label: 'جميع الطلبات', path: '/orders/all' },
+        { label: 'شراء Shein', path: '/orders/shein-purchase' },
         // { label: 'الطلبات المعلقة', path: '/orders/pending' },
         // { label: 'الطلبات المشكلة', path: '/orders/problem' },
         // { label: 'الطلبات المسلمة', path: '/orders/delivered' }

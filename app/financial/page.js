@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { convertToBaseAmount } from '../lib/financialDisplay'
 import styles from './financial.module.css'
 import { 
   HiCurrencyDollar, 
@@ -26,7 +27,9 @@ import {
   HiArrowsExpand,
   HiDotsVertical,
   HiPencil,
-  HiTrash
+  HiTrash,
+  HiCheckCircle,
+  HiExclamation
 } from 'react-icons/hi'
 
 // Supported currencies
@@ -36,15 +39,6 @@ const CURRENCIES = {
   GBP: { code: 'GBP', name: 'جنيه إسترليني', symbol: '£' },
   LYD: { code: 'LYD', name: 'دينار ليبي', symbol: 'د.ل' },
   TRY: { code: 'TRY', name: 'ليرة تركية', symbol: '₺' }
-}
-
-// Exchange rates (mock - will be fetched from API or database)
-const EXCHANGE_RATES = {
-  EUR: { EUR: 1, USD: 1.08, GBP: 0.85, LYD: 5.2, TRY: 33.5 },
-  USD: { EUR: 0.93, USD: 1, GBP: 0.79, LYD: 4.8, TRY: 31.0 },
-  GBP: { EUR: 1.18, USD: 1.27, GBP: 1, LYD: 6.1, TRY: 39.4 },
-  LYD: { EUR: 0.19, USD: 0.21, GBP: 0.16, LYD: 1, TRY: 6.4 },
-  TRY: { EUR: 0.030, USD: 0.032, GBP: 0.025, LYD: 0.16, TRY: 1 }
 }
 
 // Account types
@@ -116,7 +110,10 @@ export default function FinancialPage() {
   const [accountType, setAccountType] = useState('asset') // 'asset' or 'liability'
   const [openMenuId, setOpenMenuId] = useState(null) // Track which account's menu is open
   const [editingAccount, setEditingAccount] = useState(null)
-  const [deletingAccount, setDeletingAccount] = useState(null)
+  const [fetchError, setFetchError] = useState(null)
+  const [pageBanner, setPageBanner] = useState(null)
+  const [pendingDelete, setPendingDelete] = useState(null)
+  const bannerClearTimer = useRef(null)
   const [newAccount, setNewAccount] = useState({
     name: '',
     type: '',
@@ -136,6 +133,31 @@ export default function FinancialPage() {
   // Accounts from database
   const [assets, setAssets] = useState([])
   const [liabilities, setLiabilities] = useState([])
+  /** LYD per unit + cross matrix from /api/financial/exchange-rates */
+  const [toLYD, setToLYD] = useState({
+    LYD: 1, USD: 6, EUR: 6.5, GBP: 8, TRY: 0.2,
+  })
+  const [ratesMatrix, setRatesMatrix] = useState(null)
+
+  const clearBannerTimer = () => {
+    if (bannerClearTimer.current) {
+      clearTimeout(bannerClearTimer.current)
+      bannerClearTimer.current = null
+    }
+  }
+
+  const showPageBanner = useCallback((type, message, autoClearMs = type === 'success' ? 3500 : null) => {
+    clearBannerTimer()
+    setPageBanner({ type, message })
+    if (autoClearMs != null) {
+      bannerClearTimer.current = setTimeout(() => {
+        setPageBanner(null)
+        bannerClearTimer.current = null
+      }, autoClearMs)
+    }
+  }, [])
+
+  useEffect(() => () => clearBannerTimer(), [])
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -151,132 +173,91 @@ export default function FinancialPage() {
     }
   }, [openMenuId])
 
-  // Fetch accounts and settings on mount
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
+  const refreshExchangeRates = useCallback(async () => {
+    try {
+      const res = await fetch('/api/financial/exchange-rates')
+      if (res.ok) {
+        const d = await res.json()
+        if (d.toLYD && typeof d.toLYD === 'object') setToLYD(d.toLYD)
+        if (d.rates && typeof d.rates === 'object') setRatesMatrix(d.rates)
+      }
+    } catch (e) {
+      console.warn('refreshExchangeRates:', e)
+    }
+  }, [])
+
+  const loadFinancialData = useCallback(
+    async ({ fullPage = false } = {}) => {
+      if (fullPage) {
         setLoading(true)
-        
-        // Fetch settings first to get base currency
+        setFetchError(null)
+      }
+      try {
         const settingsResponse = await fetch('/api/financial/settings')
         if (settingsResponse.ok) {
           const settings = await settingsResponse.json()
           setBaseCurrency(settings.base_currency || 'LYD')
         }
 
-        // Fetch assets
+        await refreshExchangeRates()
+
         const assetsResponse = await fetch('/api/financial/accounts?accountType=asset&activeOnly=true')
-        if (assetsResponse.ok) {
-          const assetsData = await assetsResponse.json()
-          
-          // Fetch recent transactions for each asset
-          const assetsWithTransactions = await Promise.all(
-            assetsData.map(async (account) => {
-              const transactionsResponse = await fetch(
-                `/api/financial/transactions?accountId=${account.id}&limit=5`
-              )
-              const transactions = transactionsResponse.ok 
-                ? await transactionsResponse.json()
-                : []
-              return transformAccountToUI(account, transactions)
-            })
-          )
-          
-          setAssets(assetsWithTransactions)
+        if (!assetsResponse.ok) {
+          throw new Error('تعذر تحميل الأصول')
         }
-
-        // Fetch liabilities
-        const liabilitiesResponse = await fetch('/api/financial/accounts?accountType=liability&activeOnly=true')
-        if (liabilitiesResponse.ok) {
-          const liabilitiesData = await liabilitiesResponse.json()
-          
-          // Fetch recent transactions for each liability
-          const liabilitiesWithTransactions = await Promise.all(
-            liabilitiesData.map(async (account) => {
-              const transactionsResponse = await fetch(
-                `/api/financial/transactions?accountId=${account.id}&limit=5`
-              )
-              const transactions = transactionsResponse.ok 
-                ? await transactionsResponse.json()
-                : []
-              return transformAccountToUI(account, transactions)
-            })
-          )
-          
-          setLiabilities(liabilitiesWithTransactions)
-        }
-      } catch (error) {
-        console.error('Error fetching financial data:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [])
-
-  // Fetch accounts function (reusable)
-  const fetchAccounts = async () => {
-    try {
-      // Fetch settings first to get base currency
-      const settingsResponse = await fetch('/api/financial/settings')
-      if (settingsResponse.ok) {
-        const settings = await settingsResponse.json()
-        setBaseCurrency(settings.base_currency || 'LYD')
-      }
-
-      // Fetch assets
-      const assetsResponse = await fetch('/api/financial/accounts?accountType=asset&activeOnly=true')
-      if (assetsResponse.ok) {
         const assetsData = await assetsResponse.json()
-        
-        // Fetch recent transactions for each asset
         const assetsWithTransactions = await Promise.all(
           assetsData.map(async (account) => {
             const transactionsResponse = await fetch(
               `/api/financial/transactions?accountId=${account.id}&limit=5`
             )
-            const transactions = transactionsResponse.ok 
-              ? await transactionsResponse.json()
-              : []
+            const transactions = transactionsResponse.ok ? await transactionsResponse.json() : []
             return transformAccountToUI(account, transactions)
           })
         )
-        
-        setAssets(assetsWithTransactions)
-      }
 
-      // Fetch liabilities
-      const liabilitiesResponse = await fetch('/api/financial/accounts?accountType=liability&activeOnly=true')
-      if (liabilitiesResponse.ok) {
+        const liabilitiesResponse = await fetch('/api/financial/accounts?accountType=liability&activeOnly=true')
+        if (!liabilitiesResponse.ok) {
+          throw new Error('تعذر تحميل الالتزامات')
+        }
         const liabilitiesData = await liabilitiesResponse.json()
-        
-        // Fetch recent transactions for each liability
         const liabilitiesWithTransactions = await Promise.all(
           liabilitiesData.map(async (account) => {
             const transactionsResponse = await fetch(
               `/api/financial/transactions?accountId=${account.id}&limit=5`
             )
-            const transactions = transactionsResponse.ok 
-              ? await transactionsResponse.json()
-              : []
+            const transactions = transactionsResponse.ok ? await transactionsResponse.json() : []
             return transformAccountToUI(account, transactions)
           })
         )
-        
-        setLiabilities(liabilitiesWithTransactions)
-      }
-    } catch (error) {
-      console.error('Error fetching financial data:', error)
-    }
-  }
 
-  // Convert amount from one currency to base currency
-  const convertToBase = (amount, fromCurrency) => {
-    if (fromCurrency === baseCurrency) return amount
-    const rate = EXCHANGE_RATES[fromCurrency]?.[baseCurrency] || 1
-    return amount * rate
-  }
+        setAssets(assetsWithTransactions)
+        setLiabilities(liabilitiesWithTransactions)
+        if (fullPage) setFetchError(null)
+      } catch (error) {
+        console.error('Error fetching financial data:', error)
+        const msg = error?.message || 'حدث خطأ أثناء تحميل البيانات'
+        if (fullPage) {
+          setFetchError(msg)
+        } else {
+          showPageBanner('error', msg)
+        }
+      } finally {
+        if (fullPage) setLoading(false)
+      }
+    },
+    [refreshExchangeRates, showPageBanner]
+  )
+
+  useEffect(() => {
+    loadFinancialData({ fullPage: true })
+  }, [loadFinancialData])
+
+  const fetchAccounts = () => loadFinancialData({ fullPage: false })
+
+  // Convert amount from one currency to base currency (admin-configured rates)
+  const convertToBase = (amount, fromCurrency) =>
+    convertToBaseAmount(amount, fromCurrency, baseCurrency, toLYD)
 
   // Calculate totals in base currency
   const totalAssets = assets.reduce((sum, asset) => {
@@ -318,7 +299,7 @@ export default function FinancialPage() {
 
   const handleSaveAccount = async () => {
     if (!newAccount.name || !newAccount.type) {
-      alert('الرجاء ملء جميع الحقول المطلوبة')
+      showPageBanner('warning', 'الرجاء ملء جميع الحقول المطلوبة', 5000)
       return
     }
 
@@ -366,10 +347,10 @@ export default function FinancialPage() {
       color: '#2563EB'
     })
       
-      alert('تم إضافة الحساب بنجاح')
+      showPageBanner('success', 'تم إضافة الحساب بنجاح')
     } catch (error) {
       console.error('Error saving account:', error)
-      alert(`حدث خطأ أثناء حفظ الحساب: ${error.message}`)
+      showPageBanner('error', `حدث خطأ أثناء حفظ الحساب: ${error.message}`)
     }
   }
 
@@ -386,13 +367,13 @@ export default function FinancialPage() {
 
   const handleTransfer = async () => {
     if (!transferData.fromAccountId || !transferData.toAccountId || !transferData.amount) {
-      alert('الرجاء ملء جميع الحقول المطلوبة')
+      showPageBanner('warning', 'الرجاء ملء جميع الحقول المطلوبة', 5000)
       return
     }
 
     const amount = parseFloat(transferData.amount)
     if (amount <= 0) {
-      alert('المبلغ يجب أن يكون أكبر من الصفر')
+      showPageBanner('warning', 'المبلغ يجب أن يكون أكبر من الصفر', 5000)
       return
     }
 
@@ -423,18 +404,19 @@ export default function FinancialPage() {
         throw new Error(error.error || 'Failed to create transfer')
       }
 
-      // Refresh the page to get updated balances
-      window.location.reload()
-    setTransferData({
-      fromAccountId: '',
-      toAccountId: '',
-      amount: '',
-      exchangeRate: 1.0,
-      description: ''
-    })
+      await fetchAccounts()
+      setShowTransferModal(false)
+      setTransferData({
+        fromAccountId: '',
+        toAccountId: '',
+        amount: '',
+        exchangeRate: 1.0,
+        description: ''
+      })
+      showPageBanner('success', 'تم تنفيذ التحويل بنجاح')
     } catch (error) {
       console.error('Error creating transfer:', error)
-      alert(`حدث خطأ أثناء التحويل: ${error.message}`)
+      showPageBanner('error', `حدث خطأ أثناء التحويل: ${error.message}`)
     }
   }
 
@@ -476,55 +458,38 @@ export default function FinancialPage() {
     setOpenMenuId(null)
   }
 
-  const handleDeleteAccount = async (accountId, accountName) => {
-    if (!confirm(`هل أنت متأكد من حذف الحساب "${accountName}" وجميع المعاملات المرتبطة به؟\n\nهذا الإجراء لا يمكن التراجع عنه.`)) {
-      return
-    }
+  const handleDeleteRequest = (accountId, accountName) => {
+    setOpenMenuId(null)
+    setPendingDelete({ id: accountId, name: accountName })
+  }
 
+  const executePendingDelete = async () => {
+    if (!pendingDelete) return
+    const { id: accountId } = pendingDelete
     try {
-      // Delete all transactions related to this account first
-      // Get all transactions where this account is involved (as account_id or related_account_id)
-      const transactionsResponse = await fetch(`/api/financial/transactions?accountId=${accountId}`)
-      if (transactionsResponse.ok) {
-        const transactions = await transactionsResponse.json()
-        // Delete each transaction
-        for (const tx of transactions) {
-          try {
-            const deleteResponse = await fetch(`/api/financial/transactions/${tx.id}`, {
-              method: 'DELETE'
-            })
-            if (!deleteResponse.ok) {
-              console.warn(`Failed to delete transaction ${tx.id}`)
-            }
-          } catch (txError) {
-            console.warn(`Error deleting transaction ${tx.id}:`, txError)
-          }
-        }
-      }
-
-      // Delete the account
-      const response = await fetch(`/api/financial/accounts/${accountId}`, {
-        method: 'DELETE'
-      })
+      const response = await fetch(
+        `/api/financial/accounts/${accountId}?purge=true&force=true`,
+        { method: 'DELETE' }
+      )
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Failed to delete account')
+        throw new Error(error.error || error.details || 'Failed to delete account')
       }
 
-      // Refresh accounts
       await fetchAccounts()
-      setOpenMenuId(null)
-      alert('تم حذف الحساب وجميع المعاملات المرتبطة به بنجاح')
+      setPendingDelete(null)
+      showPageBanner('success', 'تم حذف الحساب وجميع المعاملات المرتبطة به')
     } catch (error) {
       console.error('Error deleting account:', error)
-      alert(`حدث خطأ أثناء حذف الحساب: ${error.message}`)
+      showPageBanner('error', `حدث خطأ أثناء حذف الحساب: ${error.message}`)
+      setPendingDelete(null)
     }
   }
 
   const handleSaveEditAccount = async () => {
     if (!editingAccount || !newAccount.name || !newAccount.type) {
-      alert('الرجاء ملء جميع الحقول المطلوبة')
+      showPageBanner('warning', 'الرجاء ملء جميع الحقول المطلوبة', 5000)
       return
     }
 
@@ -560,12 +525,20 @@ export default function FinancialPage() {
         dueDate: null,
         color: '#2563EB'
       })
-      alert('تم تحديث الحساب بنجاح')
+      showPageBanner('success', 'تم تحديث الحساب بنجاح')
     } catch (error) {
       console.error('Error updating account:', error)
-      alert(`حدث خطأ أثناء تحديث الحساب: ${error.message}`)
+      showPageBanner('error', `حدث خطأ أثناء تحديث الحساب: ${error.message}`)
     }
   }
+
+  const isEmptyAccounts = assets.length === 0 && liabilities.length === 0
+  const bannerClass =
+    pageBanner?.type === 'success'
+      ? styles.bannerSuccess
+      : pageBanner?.type === 'warning'
+        ? styles.bannerWarning
+        : styles.bannerError
 
   return (
     <div className={styles.financialPage}>
@@ -578,6 +551,29 @@ export default function FinancialPage() {
           <p className={styles.pageSubtitle}>
             تتبع الأموال والالتزامات المالية بشكل دقيق ومفصل
           </p>
+          <ul className={styles.quickNav} role="list">
+            <li>
+              <Link className={styles.quickNavLink} href="/financial/transactions">
+                جميع الحركات
+              </Link>
+            </li>
+            <li className={styles.quickNavSep} aria-hidden="true">
+              ·
+            </li>
+            <li>
+              <Link className={styles.quickNavLink} href="/financial/reports">
+                التقارير المالية
+              </Link>
+            </li>
+            <li className={styles.quickNavSep} aria-hidden="true">
+              ·
+            </li>
+            <li>
+              <Link className={styles.quickNavLink} href="/financial/settings">
+                الإعدادات
+              </Link>
+            </li>
+          </ul>
         </div>
         <div className={styles.headerActions}>
           <button 
@@ -595,6 +591,55 @@ export default function FinancialPage() {
         </div>
       </div>
 
+      {pageBanner && (
+        <div className={bannerClass} role="status">
+          {pageBanner.type === 'success' ? (
+            <HiCheckCircle aria-hidden />
+          ) : (
+            <HiExclamation aria-hidden />
+          )}
+          <span>{pageBanner.message}</span>
+          <button
+            type="button"
+            className={styles.bannerDismiss}
+            onClick={() => {
+              clearBannerTimer()
+              setPageBanner(null)
+            }}
+            aria-label="إغلاق التنبيه"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className={styles.statePanel}>
+          <p>جاري التحميل...</p>
+        </div>
+      ) : fetchError ? (
+        <div className={styles.statePanel}>
+          <p style={{ marginBottom: '1rem' }}>{fetchError}</p>
+          <button
+            type="button"
+            className={styles.addButton}
+            onClick={() => loadFinancialData({ fullPage: true })}
+          >
+            إعادة المحاولة
+          </button>
+        </div>
+      ) : isEmptyAccounts ? (
+        <div className={styles.statePanel}>
+          <p style={{ marginBottom: '1rem', fontSize: '1.05rem' }}>
+            لا توجد حسابات مالية بعد. أضف أصلاً أو التزاماً لبدء تتبع الأرصدة والحركات.
+          </p>
+          <button type="button" className={styles.addButton} onClick={handleAddAccount}>
+            <HiPlus />
+            إضافة حساب جديد
+          </button>
+        </div>
+      ) : (
+        <>
       {/* Summary Cards */}
       <div className={styles.summaryCards}>
         <div className={styles.summaryCard}>
@@ -673,7 +718,7 @@ export default function FinancialPage() {
                             </button>
                             <button
                               className={styles.menuItem}
-                              onClick={() => handleDeleteAccount(asset.id, asset.name)}
+                              onClick={() => handleDeleteRequest(asset.id, asset.name)}
                               style={{ color: '#DC2626' }}
                             >
                               <HiTrash />
@@ -794,7 +839,7 @@ export default function FinancialPage() {
                             </button>
                             <button
                               className={styles.menuItem}
-                              onClick={() => handleDeleteAccount(liability.id, liability.name)}
+                              onClick={() => handleDeleteRequest(liability.id, liability.name)}
                               style={{ color: '#DC2626' }}
                             >
                               <HiTrash />
@@ -883,6 +928,8 @@ export default function FinancialPage() {
           })}
         </div>
       </div>
+        </>
+      )}
 
       {/* Add Account Modal */}
       {showAddAccountModal && (
@@ -1126,9 +1173,12 @@ export default function FinancialPage() {
                   className={styles.modalInput}
                   placeholder="0"
                   step="0.01"
+                  disabled={(editingAccount?.recentTransactions?.length || 0) > 0}
                 />
                 <small style={{ color: '#6B7280', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem' }}>
-                  تحذير: تغيير الرصيد يدوياً قد يؤثر على دقة السجلات المالية
+                  {(editingAccount?.recentTransactions?.length || 0) > 0
+                    ? 'لا يمكن تعديل الرصيد يدوياً مع وجود حركات؛ سجّل معاملة إيداع/سحب أو تسوية.'
+                    : 'تحذير: تغيير الرصيد يدوياً قد يؤثر على دقة السجلات المالية'}
                 </small>
               </div>
 
@@ -1188,12 +1238,12 @@ export default function FinancialPage() {
         </div>
       )}
 
-      {/* Settings Modal */}
+      {/* Settings Modal — read-only; edit in /financial/settings */}
       {showSettingsModal && (
         <div className={styles.modalOverlay} onClick={() => setShowSettingsModal(false)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>إعدادات العملة الأساسية</h2>
+              <h2 className={styles.modalTitle}>العملة الأساسية للتقارير</h2>
               <button className={styles.closeButton} onClick={() => setShowSettingsModal(false)}>
                 <HiX />
               </button>
@@ -1201,58 +1251,70 @@ export default function FinancialPage() {
 
             <div className={styles.modalForm}>
               <div className={styles.formGroup}>
-                <label className={styles.required}>العملة الأساسية للتقارير</label>
                 <p className={styles.helpText}>
-                  جميع المبالغ سيتم تحويلها إلى هذه العملة في التقارير
+                  تعديل العملة الأساسية يتم من صفحة الإعدادات المالية مع باقي إعدادات النظام.
                 </p>
-                <select
-                  value={baseCurrency}
-                  onChange={(e) => setBaseCurrency(e.target.value)}
-                  className={styles.modalSelect}
-                >
-                  {Object.values(CURRENCIES).map((curr) => (
-                    <option key={curr.code} value={curr.code}>
-                      {curr.name} ({curr.code}) {curr.symbol}
-                    </option>
-                  ))}
-                </select>
+                <div className={styles.currencyHighlightBox}>
+                  <span style={{ fontWeight: '500' }}>العملة الحالية:</span>
+                  <span
+                    style={{
+                      fontSize: '1.15rem',
+                      fontWeight: '600',
+                      color: 'var(--primary)',
+                    }}
+                  >
+                    {formatCurrencySymbol(baseCurrency)} {baseCurrency}{' '}
+                    ({CURRENCIES[baseCurrency]?.name || baseCurrency})
+                  </span>
+                </div>
               </div>
 
               <div className={styles.modalActions}>
                 <button className={styles.modalCancelButton} onClick={() => setShowSettingsModal(false)}>
+                  إغلاق
+                </button>
+                <Link
+                  href="/financial/settings#financial-base-currency"
+                  className={styles.modalSaveButton}
+                  style={{ textAlign: 'center', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                  onClick={() => setShowSettingsModal(false)}
+                >
+                  فتح الإعدادات المالية
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete account confirmation */}
+      {pendingDelete && (
+        <div className={styles.modalOverlay} onClick={() => setPendingDelete(null)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>تأكيد حذف الحساب</h2>
+              <button type="button" className={styles.closeButton} onClick={() => setPendingDelete(null)}>
+                <HiX />
+              </button>
+            </div>
+            <div className={styles.modalForm}>
+              <p className={styles.helpText} style={{ marginBottom: '1rem' }}>
+                هل أنت متأكد من حذف الحساب &quot;{pendingDelete.name}&quot; نهائياً مع جميع الحركات المرتبطة به؟
+                <br />
+                <br />
+                هذا الإجراء لا يمكن التراجع عنه. يُنصح بعكس المعاملات بدلاً من الحذف عندما يكون ذلك ممكناً.
+              </p>
+              <div className={styles.modalActions}>
+                <button type="button" className={styles.modalCancelButton} onClick={() => setPendingDelete(null)}>
                   إلغاء
                 </button>
                 <button
+                  type="button"
                   className={styles.modalSaveButton}
-                  onClick={async () => {
-                    try {
-                      const response = await fetch('/api/financial/settings', {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ base_currency: baseCurrency })
-                      })
-
-                      if (!response.ok) {
-                        const error = await response.json()
-                        throw new Error(error.error || 'Failed to update settings')
-                      }
-
-                      // Verify the save by fetching the updated settings
-                      const verifyResponse = await fetch('/api/financial/settings')
-                      if (verifyResponse.ok) {
-                        const updatedSettings = await verifyResponse.json()
-                        setBaseCurrency(updatedSettings.base_currency || 'LYD')
-                      }
-
-                    setShowSettingsModal(false)
-                      alert('تم حفظ الإعدادات بنجاح')
-                    } catch (error) {
-                      console.error('Error saving settings:', error)
-                      alert(`حدث خطأ أثناء حفظ الإعدادات: ${error.message}`)
-                    }
-                  }}
+                  style={{ background: '#DC2626' }}
+                  onClick={executePendingDelete}
                 >
-                  حفظ
+                  حذف نهائياً
                 </button>
               </div>
             </div>
@@ -1305,7 +1367,7 @@ export default function FinancialPage() {
                       ...transferData, 
                       toAccountId: e.target.value,
                       exchangeRate: (fromAcc && toAcc && fromAcc.currency !== toAcc.currency) 
-                        ? EXCHANGE_RATES[fromAcc.currency]?.[toAcc.currency] || 1.0
+                        ? ratesMatrix?.[fromAcc.currency]?.[toAcc.currency] || 1.0
                         : 1.0
                     })
                   }}

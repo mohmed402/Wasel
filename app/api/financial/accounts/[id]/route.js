@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { financialAccount } from '../../../../../server/supabase'
+import { financialAccount, supabaseAdmin } from '../../../../../server/supabase'
 
 export async function GET(request, { params }) {
   try {
@@ -47,7 +47,25 @@ export async function PUT(request, { params }) {
     const updateData = {}
     if (body.name !== undefined) updateData.name = body.name
     if (body.currency !== undefined) updateData.currency = body.currency
-    if (body.balance !== undefined) updateData.balance = parseFloat(body.balance)
+    if (body.balance !== undefined) {
+      if (supabaseAdmin) {
+        const { count, error: countError } = await supabaseAdmin
+          .from('financial_transactions')
+          .select('*', { count: 'exact', head: true })
+          .or(`account_id.eq.${id},related_account_id.eq.${id}`)
+        if (countError) throw countError
+        if ((count || 0) > 0) {
+          return NextResponse.json(
+            {
+              error:
+                'لا يمكن تعديل الرصيد يدوياً مع وجود حركات في السجل. سجّل إيداعاً/سحباً أو معاملة تسوية.',
+            },
+            { status: 400 }
+          )
+        }
+      }
+      updateData.balance = parseFloat(body.balance)
+    }
     if (body.due_date !== undefined) updateData.due_date = body.due_date
     if (body.color !== undefined) updateData.color = body.color
     if (body.is_active !== undefined) updateData.is_active = body.is_active
@@ -78,7 +96,38 @@ export async function DELETE(request, { params }) {
       )
     }
 
-    // Soft delete by setting is_active to false
+    const { searchParams } = new URL(request.url)
+    const purge = searchParams.get('purge') === 'true'
+    const force = searchParams.get('force') === 'true'
+
+    if (purge && force) {
+      if (!supabaseAdmin) {
+        return NextResponse.json(
+          { error: 'Supabase admin client not initialized' },
+          { status: 503 }
+        )
+      }
+      const { data: txs, error: listError } = await supabaseAdmin
+        .from('financial_transactions')
+        .select('id')
+        .or(`account_id.eq.${id},related_account_id.eq.${id}`)
+      if (listError) throw listError
+      for (const row of txs || []) {
+        const { error: delTxError } = await supabaseAdmin
+          .from('financial_transactions')
+          .delete()
+          .eq('id', row.id)
+        if (delTxError) throw delTxError
+      }
+      const { error: delAccError } = await supabaseAdmin
+        .from('financial_accounts')
+        .delete()
+        .eq('id', id)
+      if (delAccError) throw delAccError
+      return NextResponse.json({ ok: true, purged: true }, { status: 200 })
+    }
+
+    // Soft delete by setting is_active to false (ledger preserved)
     const deletedAccount = await financialAccount.delete(id)
 
     return NextResponse.json(deletedAccount, { status: 200 })

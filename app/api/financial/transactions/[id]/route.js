@@ -12,6 +12,16 @@ export async function DELETE(request, { params }) {
       )
     }
 
+    if (process.env.ALLOW_FINANCIAL_TX_DELETE !== 'true') {
+      return NextResponse.json(
+        {
+          error:
+            'حذف المعاملات معطّل للحفاظ على سجل التدقيق. استخدم POST /api/financial/transactions/[id]/reverse مع سبب، أو عيّن ALLOW_FINANCIAL_TX_DELETE=true في بيئة الطوارئ فقط.',
+        },
+        { status: 403 }
+      )
+    }
+
     if (!supabaseAdmin) {
       throw new Error('Supabase admin client not initialized')
     }

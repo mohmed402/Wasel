@@ -673,7 +673,7 @@ const orderOperations = {
    * @param {number} options.offset - Offset for pagination
    * @returns {Promise<Array>} Array of orders
    */
-  async getAll({ status, limit = 100, offset = 0 } = {}) {
+  async getAll({ status, order_source, limit = 100, offset = 0 } = {}) {
     if (!supabase) throw new Error('Supabase client not initialized')
     
     let query = supabase
@@ -689,11 +689,14 @@ const orderOperations = {
         ),
         items:order_items (
           id,
+          name,
           quantity,
           unit_price,
           selling_price,
           purchase_price,
-          purchase_exchange_rate
+          purchase_exchange_rate,
+          currency,
+          availability
         ),
         expenses:order_expenses (
           id,
@@ -707,6 +710,10 @@ const orderOperations = {
     
     if (status) {
       query = query.eq('status', status)
+    }
+
+    if (order_source) {
+      query = query.eq('order_source', order_source)
     }
     
     const { data: orders, error } = await query
@@ -1177,6 +1184,109 @@ const financialTransactionOperations = {
     if (updateError) throw updateError
     
     return Math.max(0, balance)
+  },
+
+  /**
+   * Find the other leg of a transfer (same date, mirrored accounts, same base amount).
+   */
+  async _findTransferPartnerRow(row) {
+    if (!supabaseAdmin) throw new Error('Supabase admin client not initialized')
+    const base = parseFloat(row.amount_in_base_currency)
+    const { data, error } = await supabaseAdmin
+      .from('financial_transactions')
+      .select('*')
+      .eq('transaction_type', 'transfer')
+      .eq('transaction_date', row.transaction_date)
+      .neq('id', row.id)
+    if (error) throw error
+    return (data || []).find(
+      (p) =>
+        p.related_account_id === row.account_id &&
+        p.account_id === row.related_account_id &&
+        Math.abs(parseFloat(p.amount_in_base_currency) - base) < 0.02
+    )
+  },
+
+  /**
+   * Post an audit-friendly reversal (credit↔debit, or inverse transfer).
+   * @param {string} id - Original transaction UUID
+   * @param {{ reason?: string, transaction_date?: string }} opts
+   */
+  async reverse(id, { reason = '', transaction_date } = {}) {
+    if (!supabaseAdmin) throw new Error('Supabase admin client not initialized')
+    const orig = await this.getById(id)
+    if (!orig) throw new Error('المعاملة غير موجودة')
+    if (orig.reference_type === 'reversal') {
+      throw new Error('لا يمكن عكس معاملة عكس')
+    }
+    const desc = reason.trim()
+      ? `عكس معاملة — ${reason.trim()}`
+      : `عكس معاملة ${String(id).slice(0, 8)}`
+    const date = transaction_date || new Date().toISOString().split('T')[0]
+
+    if (orig.transaction_type === 'credit') {
+      return this.create({
+        account_id: orig.account_id,
+        related_account_id: orig.related_account_id || null,
+        transaction_type: 'debit',
+        amount: parseFloat(orig.amount),
+        currency: orig.currency,
+        exchange_rate: parseFloat(orig.exchange_rate || 1),
+        amount_in_base_currency: parseFloat(orig.amount_in_base_currency),
+        description: desc,
+        reference_type: 'reversal',
+        reference_id: id,
+        transaction_date: date,
+        notes: orig.notes || null,
+      })
+    }
+
+    if (orig.transaction_type === 'debit') {
+      return this.create({
+        account_id: orig.account_id,
+        related_account_id: orig.related_account_id || null,
+        transaction_type: 'credit',
+        amount: parseFloat(orig.amount),
+        currency: orig.currency,
+        exchange_rate: parseFloat(orig.exchange_rate || 1),
+        amount_in_base_currency: parseFloat(orig.amount_in_base_currency),
+        description: desc,
+        reference_type: 'reversal',
+        reference_id: id,
+        transaction_date: date,
+        notes: orig.notes || null,
+      })
+    }
+
+    if (orig.transaction_type === 'transfer') {
+      const partner = await this._findTransferPartnerRow(orig)
+      if (!partner) throw new Error('لم يُعثر على الطرف الثاني للتحويل')
+
+      let outLeg = orig
+      let inLeg = partner
+      const tOrig = orig.created_at ? new Date(orig.created_at).getTime() : 0
+      const tPartner = partner.created_at ? new Date(partner.created_at).getTime() : 0
+      if (tOrig > tPartner) {
+        outLeg = partner
+        inLeg = orig
+      }
+
+      const fromAmt = parseFloat(inLeg.amount)
+      const toAmt = parseFloat(outLeg.amount)
+      const er = fromAmt > 0 ? toAmt / fromAmt : 1.0
+
+      return this.createTransfer({
+        from_account_id: inLeg.account_id,
+        to_account_id: outLeg.account_id,
+        amount: fromAmt,
+        currency: inLeg.currency,
+        exchange_rate: er,
+        description: desc,
+        transaction_date: date,
+      })
+    }
+
+    throw new Error('نوع معاملة غير مدعوم للعكس')
   },
 
   /**

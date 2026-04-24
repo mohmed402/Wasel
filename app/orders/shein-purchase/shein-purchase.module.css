@@ -1,0 +1,247 @@
+.root {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.tab {
+  padding: 0.65rem 1.1rem;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.tabActive {
+  border-color: var(--primary);
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.panel {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--border-radius);
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.panelTitle {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.orderRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.orderRow:last-child {
+  border-bottom: none;
+}
+
+.orderMeta {
+  flex: 1;
+  font-size: 0.9rem;
+}
+
+.warn {
+  color: #B45309;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.totalsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem;
+}
+
+.splitGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.totalCard {
+  padding: 1rem;
+  background: var(--background);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--admin-border);
+}
+
+.totalLabel {
+  font-size: 0.8rem;
+  color: var(--admin-muted);
+  margin-bottom: 0.35rem;
+}
+
+.totalValue {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.select {
+  width: 100%;
+  max-width: 420px;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--admin-border);
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.primaryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.primaryBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.secondaryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  background: var(--admin-surface);
+  color: var(--text);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.linkCell {
+  word-break: break-all;
+  font-size: 0.85rem;
+}
+
+.registryGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+@media (max-width: 768px) {
+  .registryGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.registryList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.registryList li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--admin-border);
+  font-size: 0.9rem;
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal {
+  background: var(--admin-surface);
+  border-radius: var(--border-radius);
+  max-width: 480px;
+  width: 100%;
+  padding: 1.25rem;
+  border: 1px solid var(--admin-border);
+}
+
+.modal h3 {
+  margin: 0 0 1rem 0;
+}
+
+.outcomeRow {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.oosChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.chip {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid var(--admin-border);
+  cursor: pointer;
+  user-select: none;
+}
+
+.chipOn {
+  background: rgba(220, 38, 38, 0.12);
+  border-color: #DC2626;
+  color: #991B1B;
+}
+
+.banner {
+  padding: 0.75rem 1rem;
+  border-radius: var(--border-radius);
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.bannerError {
+  background: rgba(220, 38, 38, 0.1);
+  color: #991B1B;
+  border: 1px solid rgba(220, 38, 38, 0.25);
+}
+
+.bannerSuccess {
+  background: rgba(22, 163, 74, 0.1);
+  color: #166534;
+  border: 1px solid rgba(22, 163, 74, 0.25);
+}

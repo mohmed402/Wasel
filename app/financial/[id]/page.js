@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback } from 'react'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import { convertToBaseAmount } from '../../lib/financialDisplay'
 import styles from '../financial.module.css'
 import { 
   HiCurrencyDollar, 
@@ -20,15 +21,6 @@ const CURRENCIES = {
   GBP: { code: 'GBP', name: 'جنيه إسترليني', symbol: '£' },
   LYD: { code: 'LYD', name: 'دينار ليبي', symbol: 'د.ل' },
   TRY: { code: 'TRY', name: 'ليرة تركية', symbol: '₺' }
-}
-
-// Exchange rates (mock - will be fetched from API or database)
-const EXCHANGE_RATES = {
-  EUR: { EUR: 1, USD: 1.08, GBP: 0.85, LYD: 5.2, TRY: 33.5 },
-  USD: { EUR: 0.93, USD: 1, GBP: 0.79, LYD: 4.8, TRY: 31.0 },
-  GBP: { EUR: 1.18, USD: 1.27, GBP: 1, LYD: 6.1, TRY: 39.4 },
-  LYD: { EUR: 0.19, USD: 0.21, GBP: 0.16, LYD: 1, TRY: 6.4 },
-  TRY: { EUR: 0.030, USD: 0.032, GBP: 0.025, LYD: 0.16, TRY: 1 }
 }
 
 // Account types (same as in main page)
@@ -50,60 +42,79 @@ const LIABILITY_TYPES = [
 
 export default function AccountTransactionsPage() {
   const params = useParams()
-  const router = useRouter()
   const accountId = params.id
 
   const [account, setAccount] = useState(null)
   const [transactions, setTransactions] = useState([])
   const [baseCurrency, setBaseCurrency] = useState('LYD')
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
+  const [accountNotFound, setAccountNotFound] = useState(false)
+  const [toLYD, setToLYD] = useState({
+    LYD: 1, USD: 6, EUR: 6.5, GBP: 8, TRY: 0.2,
+  })
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-
-        // Fetch settings to get base currency
-        const settingsResponse = await fetch('/api/financial/settings')
-        if (settingsResponse.ok) {
-          const settings = await settingsResponse.json()
-          setBaseCurrency(settings.base_currency || 'LYD')
-        }
-
-        // Fetch account details
-        const accountResponse = await fetch(`/api/financial/accounts/${accountId}`)
-        if (!accountResponse.ok) {
-          throw new Error('Failed to fetch account')
-        }
-        const accountData = await accountResponse.json()
-        setAccount(accountData)
-
-        // Fetch all transactions for this account
-        const transactionsResponse = await fetch(
-          `/api/financial/transactions?accountId=${accountId}&limit=1000`
-        )
-        if (transactionsResponse.ok) {
-          const transactionsData = await transactionsResponse.json()
-          setTransactions(transactionsData || [])
-        }
-      } catch (error) {
-        console.error('Error fetching account data:', error)
-        alert('حدث خطأ أثناء تحميل البيانات')
-      } finally {
-        setLoading(false)
+  const fetchData = useCallback(async () => {
+    if (!accountId) return
+    setLoading(true)
+    setLoadError(null)
+    setAccountNotFound(false)
+    try {
+      const settingsResponse = await fetch('/api/financial/settings')
+      if (settingsResponse.ok) {
+        const settings = await settingsResponse.json()
+        setBaseCurrency(settings.base_currency || 'LYD')
       }
-    }
 
-    if (accountId) {
-      fetchData()
+      const fxRes = await fetch('/api/financial/exchange-rates')
+      if (fxRes.ok) {
+        const fx = await fxRes.json()
+        if (fx.toLYD && typeof fx.toLYD === 'object') setToLYD(fx.toLYD)
+      }
+
+      const accountResponse = await fetch(`/api/financial/accounts/${accountId}`)
+      if (accountResponse.status === 404) {
+        setAccount(null)
+        setAccountNotFound(true)
+        setTransactions([])
+        return
+      }
+      if (!accountResponse.ok) {
+        setAccount(null)
+        setLoadError('تعذر تحميل الحساب')
+        setTransactions([])
+        return
+      }
+      const accountData = await accountResponse.json()
+      setAccount(accountData)
+      setAccountNotFound(false)
+
+      const transactionsResponse = await fetch(
+        `/api/financial/transactions?accountId=${accountId}&limit=1000`
+      )
+      if (transactionsResponse.ok) {
+        const transactionsData = await transactionsResponse.json()
+        setTransactions(transactionsData || [])
+      } else {
+        setTransactions([])
+      }
+    } catch (error) {
+      console.error('Error fetching account data:', error)
+      setLoadError(error?.message || 'حدث خطأ أثناء تحميل البيانات')
+      setAccount(null)
+      setAccountNotFound(false)
+      setTransactions([])
+    } finally {
+      setLoading(false)
     }
   }, [accountId])
 
-  const convertToBase = (amount, fromCurrency) => {
-    if (fromCurrency === baseCurrency) return amount
-    const rate = EXCHANGE_RATES[fromCurrency]?.[baseCurrency] || 1
-    return amount * rate
-  }
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  const convertToBase = (amount, fromCurrency) =>
+    convertToBaseAmount(amount, fromCurrency, baseCurrency, toLYD)
 
   const formatCurrency = (amount, currency = baseCurrency) => {
     const currencyInfo = CURRENCIES[currency] || CURRENCIES.EUR
@@ -141,19 +152,40 @@ export default function AccountTransactionsPage() {
   if (loading) {
     return (
       <div className={styles.financialPage}>
-        <div style={{ textAlign: 'center', padding: '4rem' }}>
+        <div className={styles.statePanel}>
           <p>جاري التحميل...</p>
         </div>
       </div>
     )
   }
 
-  if (!account) {
+  if (loadError) {
     return (
       <div className={styles.financialPage}>
-        <div style={{ textAlign: 'center', padding: '4rem' }}>
+        <div className={styles.statePanel}>
+          <p style={{ marginBottom: '1rem' }}>{loadError}</p>
+          <button type="button" className={styles.addButton} onClick={fetchData}>
+            إعادة المحاولة
+          </button>
+          <div style={{ marginTop: '1.5rem' }}>
+            <Link href="/financial" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 500 }}>
+              العودة إلى الأصول والمديونية
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (accountNotFound || !account) {
+    return (
+      <div className={styles.financialPage}>
+        <div className={styles.statePanel}>
           <p>الحساب غير موجود</p>
-          <Link href="/financial" style={{ marginTop: '1rem', display: 'inline-block', color: 'var(--primary)' }}>
+          <Link
+            href="/financial"
+            style={{ marginTop: '1rem', display: 'inline-block', color: 'var(--primary)', fontWeight: 500 }}
+          >
             العودة إلى الصفحة الرئيسية
           </Link>
         </div>

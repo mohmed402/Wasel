@@ -15,7 +15,8 @@ export async function PATCH(request, { params }) {
       purchase_account_id, 
       purchase_price, 
       purchase_currency, 
-      purchase_exchange_rate 
+      purchase_exchange_rate,
+      skip_financial_transaction
     } = body
 
     if (!status) {
@@ -35,7 +36,7 @@ export async function PATCH(request, { params }) {
     }
 
     // If status is purchased, validate purchase information
-    if (status === 'purchased') {
+    if (status === 'purchased' && !skip_financial_transaction) {
       if (!purchase_account_id || !purchase_price) {
         return NextResponse.json(
           { error: 'purchase_account_id and purchase_price are required when status is purchased' },

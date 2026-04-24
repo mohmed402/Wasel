@@ -1,106 +1,121 @@
 import { NextResponse } from 'next/server'
-import { supabaseAdmin } from '../../../server/supabase'
+import { financialSettings } from '../../../server/supabase'
+import { compileFromFinancialSettings, DEFAULT_TO_LYD } from '../../../server/financialExchangeRates'
 
 export const dynamic = 'force-dynamic'
 
+const RATE_KEYS = ['EUR', 'USD', 'GBP', 'LYD', 'TRY']
+
+function sanitizeFinancialRates(input) {
+  if (!input || typeof input !== 'object') return {}
+  const out = {}
+  for (const k of RATE_KEYS) {
+    if (input[k] === undefined || input[k] === null || input[k] === '') continue
+    const n = typeof input[k] === 'number' ? input[k] : parseFloat(String(input[k]))
+    if (Number.isFinite(n) && n > 0) out[k] = n
+  }
+  return out
+}
+
 /**
  * GET /api/pricing-settings
- * Returns the active pricing method and shipping cost for customer-facing display.
- *
- * Pricing Methods:
- *   1 = Free shipping for customer, coupon kept by More Express (default)
- *   2 = Shipping paid by customer, coupon given to customer
- *   3 = Shipping paid by customer, coupon kept by More Express
- *
- * Dollar rate is configurable in admin panel (stored in financial_settings).
+ * Returns pricing + display USD rate + financialRates (LYD per unit) for admin forms.
+ * Uses canonical financial_settings row (same as /api/financial/settings).
  */
 export async function GET() {
   try {
     let pricingMethod = 1
     let shippingCost = 0
-    let exchangeRateDisplay = 6.0 // mock/default display rate
-
-    if (supabaseAdmin) {
-      const { data } = await supabaseAdmin
-        .from('financial_settings')
-        .select('settings_json')
-        .order('id', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (data?.settings_json) {
-        const s = data.settings_json
-        if (typeof s.pricingMethod === 'number') pricingMethod = s.pricingMethod
-        if (typeof s.shippingCost === 'number') shippingCost = s.shippingCost
-        if (typeof s.exchangeRateDisplay === 'number') exchangeRateDisplay = s.exchangeRateDisplay
-        else if (typeof s.exchangeRates?.USD === 'number') exchangeRateDisplay = s.exchangeRates.USD
-      }
-    }
-
-    // forcedMethod: if set, only show that one option to the customer (no choice)
+    let exchangeRateDisplay = DEFAULT_TO_LYD.USD
     let forcedMethod = null
-    if (supabaseAdmin) {
-      try {
-        const { data: s2 } = await supabaseAdmin
-          .from('financial_settings')
-          .select('settings_json')
-          .order('id', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-        if (s2?.settings_json?.forcedMethod) forcedMethod = s2.settings_json.forcedMethod
-      } catch (_) {}
+    let financialRates = {}
+
+    try {
+      const settings = await financialSettings.get()
+      const s = settings?.settings_json && typeof settings.settings_json === 'object'
+        ? settings.settings_json
+        : {}
+
+      if (typeof s.pricingMethod === 'number') pricingMethod = s.pricingMethod
+      if (typeof s.shippingCost === 'number') shippingCost = s.shippingCost
+      if (typeof s.exchangeRateDisplay === 'number') exchangeRateDisplay = s.exchangeRateDisplay
+      else if (typeof s.exchangeRates?.USD === 'number') exchangeRateDisplay = s.exchangeRates.USD
+      if (s.forcedMethod) forcedMethod = s.forcedMethod
+      if (s.financialRates && typeof s.financialRates === 'object') {
+        financialRates = { ...s.financialRates }
+      }
+
+      const { toLYD } = compileFromFinancialSettings(settings)
+      financialRates = {
+        EUR: toLYD.EUR,
+        USD: toLYD.USD,
+        GBP: toLYD.GBP,
+        TRY: toLYD.TRY,
+        LYD: 1,
+        ...financialRates,
+      }
+    } catch (e) {
+      console.warn('pricing-settings GET fallback:', e.message)
     }
 
-    return NextResponse.json({ pricingMethod, shippingCost, exchangeRateDisplay, forcedMethod })
+    return NextResponse.json({
+      pricingMethod,
+      shippingCost,
+      exchangeRateDisplay,
+      forcedMethod,
+      financialRates,
+    })
   } catch (e) {
     console.error('pricing-settings error:', e)
-    return NextResponse.json({ pricingMethod: 1, shippingCost: 0, exchangeRateDisplay: 6.0 })
+    return NextResponse.json({
+      pricingMethod: 1,
+      shippingCost: 0,
+      exchangeRateDisplay: DEFAULT_TO_LYD.USD,
+      financialRates: { ...DEFAULT_TO_LYD },
+    })
   }
 }
 
 /**
  * PUT /api/pricing-settings
- * Admin: update pricing method, shipping cost, display exchange rate.
- * Body: { pricingMethod: 1|2|3, shippingCost: number, exchangeRateDisplay: number }
+ * Body: { pricingMethod?, shippingCost?, exchangeRateDisplay?, financialRates?: { EUR?, GBP?, TRY?, ... } }
+ * Keeps USD in financialRates in sync with exchangeRateDisplay when the latter is sent.
  */
 export async function PUT(request) {
-  if (!supabaseAdmin) {
-    return NextResponse.json({ error: 'غير متاح' }, { status: 503 })
-  }
-
   try {
     const body = await request.json()
-    const { pricingMethod, shippingCost, exchangeRateDisplay } = body
+    const { pricingMethod, shippingCost, exchangeRateDisplay, financialRates: bodyRates } = body
 
-    const { data: existing } = await supabaseAdmin
-      .from('financial_settings')
-      .select('id, settings_json')
-      .order('id', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    const current = await financialSettings.get()
+    const currentJson = current?.settings_json && typeof current.settings_json === 'object'
+      ? { ...current.settings_json }
+      : {}
 
-    const currentJson = existing?.settings_json || {}
+    const mergedRates = sanitizeFinancialRates({
+      ...(currentJson.financialRates && typeof currentJson.financialRates === 'object'
+        ? currentJson.financialRates
+        : {}),
+      ...sanitizeFinancialRates(bodyRates),
+    })
+
+    if (typeof exchangeRateDisplay === 'number' && Number.isFinite(exchangeRateDisplay)) {
+      mergedRates.USD = exchangeRateDisplay
+    }
+
     const updatedJson = {
       ...currentJson,
       ...(typeof pricingMethod === 'number' ? { pricingMethod } : {}),
       ...(typeof shippingCost === 'number' ? { shippingCost } : {}),
       ...(typeof exchangeRateDisplay === 'number' ? { exchangeRateDisplay } : {}),
+      financialRates: mergedRates,
     }
 
-    if (existing?.id) {
-      await supabaseAdmin
-        .from('financial_settings')
-        .update({ settings_json: updatedJson })
-        .eq('id', existing.id)
-    } else {
-      await supabaseAdmin
-        .from('financial_settings')
-        .insert([{ settings_json: updatedJson }])
-    }
+    await financialSettings.update({ settings_json: updatedJson })
 
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('pricing-settings PUT error:', e)
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    const status = e.message?.includes('not initialized') ? 503 : 500
+    return NextResponse.json({ error: e.message }, { status })
   }
 }

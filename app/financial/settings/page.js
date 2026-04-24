@@ -22,6 +22,22 @@ const CURRENCIES = {
   TRY: { code: 'TRY', name: 'ليرة تركية', symbol: '₺' }
 }
 
+/** Parse a positive number from API/JSON (number or numeric string). */
+function parsePositiveNumber(v) {
+  if (v === null || v === undefined || v === '') return null
+  const n = typeof v === 'number' ? v : parseFloat(String(v).replace(',', '.'))
+  if (!Number.isFinite(n) || n <= 0) return null
+  return n
+}
+
+/** Parse >= 0 (e.g. shipping cost may be 0). */
+function parseNonNegativeNumber(v) {
+  if (v === null || v === undefined || v === '') return null
+  const n = typeof v === 'number' ? v : parseFloat(String(v).replace(',', '.'))
+  if (!Number.isFinite(n) || n < 0) return null
+  return n
+}
+
 const PRICING_METHODS = [
   {
     id: 1,
@@ -51,14 +67,67 @@ export default function FinancialSettingsPage() {
   const [pricingMethod, setPricingMethod] = useState(1)
   const [shippingCost, setShippingCost] = useState(0)
   const [exchangeRateDisplay, setExchangeRateDisplay] = useState(6.0)
+  /** LYD per 1 unit — for admin reports / financial UI (see /api/financial/exchange-rates) */
+  const [financialRateEur, setFinancialRateEur] = useState(6.5)
+  const [financialRateGbp, setFinancialRateGbp] = useState(8.0)
+  const [financialRateTry, setFinancialRateTry] = useState(0.2)
   const [pricingSaving, setPricingSaving] = useState(false)
   const [pricingSuccess, setPricingSuccess] = useState(false)
   const [pricingError, setPricingError] = useState(null)
 
   useEffect(() => {
     fetchSettings()
-    fetchPricingSettings()
   }, [])
+
+  /**
+   * Loads pricing fields from financial_settings.settings_json and
+   * EUR/GBP/TRY report rates from the same DB row via /api/financial/exchange-rates
+   * (canonical compile path used by /financial and reports).
+   */
+  const loadPricingAndExchangeRates = async () => {
+    setPricingError(null)
+    try {
+      const res = await fetch('/api/pricing-settings')
+      if (res.ok) {
+        const d = await res.json()
+        if (typeof d.pricingMethod === 'number' && d.pricingMethod >= 1) {
+          setPricingMethod(d.pricingMethod)
+        }
+        const sc = parseNonNegativeNumber(d.shippingCost)
+        if (sc !== null) setShippingCost(sc)
+        const er = parsePositiveNumber(d.exchangeRateDisplay)
+        if (er != null) setExchangeRateDisplay(er)
+
+        const fr = d.financialRates && typeof d.financialRates === 'object' ? d.financialRates : {}
+        const eur = parsePositiveNumber(fr.EUR)
+        const gbp = parsePositiveNumber(fr.GBP)
+        const tr = parsePositiveNumber(fr.TRY)
+        if (eur != null) setFinancialRateEur(eur)
+        if (gbp != null) setFinancialRateGbp(gbp)
+        if (tr != null) setFinancialRateTry(tr)
+      } else {
+        setPricingError('تعذر تحميل إعدادات التسعير من الخادم')
+      }
+
+      const fxRes = await fetch('/api/financial/exchange-rates')
+      if (fxRes.ok) {
+        const fx = await fxRes.json()
+        const t = fx.toLYD && typeof fx.toLYD === 'object' ? fx.toLYD : {}
+        const eur = parsePositiveNumber(t.EUR)
+        const gbp = parsePositiveNumber(t.GBP)
+        const tr = parsePositiveNumber(t.TRY)
+        if (eur != null) setFinancialRateEur(eur)
+        if (gbp != null) setFinancialRateGbp(gbp)
+        if (tr != null) setFinancialRateTry(tr)
+      } else {
+        console.warn('exchange-rates GET failed', fxRes.status)
+        setPricingError((prev) => prev || 'تعذر تحميل أسعار الصرف للتقارير من الخادم')
+      }
+    } catch (error) {
+      console.error('Error loading pricing / exchange rates:', error)
+      setPricingError('حدث خطأ أثناء تحميل إعدادات التسعير أو أسعار الصرف')
+    }
+  }
 
   const fetchSettings = async () => {
     try {
@@ -68,24 +137,13 @@ export default function FinancialSettingsPage() {
         const settings = await response.json()
         setBaseCurrency(settings.base_currency || 'LYD')
       }
+      await loadPricingAndExchangeRates()
     } catch (error) {
       console.error('Error fetching settings:', error)
       setSaveError('حدث خطأ أثناء تحميل الإعدادات')
     } finally {
       setLoading(false)
     }
-  }
-
-  const fetchPricingSettings = async () => {
-    try {
-      const res = await fetch('/api/pricing-settings')
-      if (res.ok) {
-        const d = await res.json()
-        if (d.pricingMethod) setPricingMethod(d.pricingMethod)
-        if (typeof d.shippingCost === 'number') setShippingCost(d.shippingCost)
-        if (typeof d.exchangeRateDisplay === 'number') setExchangeRateDisplay(d.exchangeRateDisplay)
-      }
-    } catch (_) {}
   }
 
   const handleSave = async () => {
@@ -129,7 +187,16 @@ export default function FinancialSettingsPage() {
       const res = await fetch('/api/pricing-settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pricingMethod, shippingCost: Number(shippingCost), exchangeRateDisplay: Number(exchangeRateDisplay) }),
+        body: JSON.stringify({
+          pricingMethod,
+          shippingCost: Number(shippingCost),
+          exchangeRateDisplay: Number(exchangeRateDisplay),
+          financialRates: {
+            EUR: Number(financialRateEur),
+            GBP: Number(financialRateGbp),
+            TRY: Number(financialRateTry),
+          },
+        }),
       })
       if (!res.ok) {
         const d = await res.json()
@@ -137,6 +204,7 @@ export default function FinancialSettingsPage() {
       }
       setPricingSuccess(true)
       setTimeout(() => setPricingSuccess(false), 3000)
+      await loadPricingAndExchangeRates()
     } catch (e) {
       setPricingError(e.message)
     } finally {
@@ -191,7 +259,10 @@ export default function FinancialSettingsPage() {
           <h2 className={styles.sectionTitle}>إعدادات العملة</h2>
         </div>
 
-        <div className={`${styles.panelPadded} ${styles.panelPaddedNarrow}`}>
+        <div
+          id="financial-base-currency"
+          className={`${styles.panelPadded} ${styles.panelPaddedNarrow}`}
+        >
           {loading ? (
             <div style={{ textAlign: 'center', padding: '2rem' }}>
               <p>جاري التحميل...</p>
@@ -367,7 +438,7 @@ export default function FinancialSettingsPage() {
               سعر الدولار المعروض للزبون (د.ل لكل $1)
             </label>
             <p className={styles.helpText} style={{ fontSize: '0.82rem', marginBottom: '0.5rem' }}>
-              السعر الذي يُعرض للزبون عند احتساب إجمالي السلة بالدينار (مثال: 6 أو 6.25)
+              السعر الذي يُعرض للزبون عند احتساب إجمالي السلة بالدينار (مثال: 6 أو 6.25). يُستخدم أيضاً كسعر USD في التقارير المالية.
             </p>
             <input
               type="number"
@@ -378,6 +449,48 @@ export default function FinancialSettingsPage() {
               className={styles.filterControl}
               style={{ maxWidth: '240px' }}
             />
+          </div>
+
+          <div style={{ marginBottom: '1.5rem' }}>
+            <h3 style={{ fontWeight: 700, marginBottom: '0.5rem', fontSize: '1rem' }}>أسعار الصرف للتقارير (د.ل لكل وحدة)</h3>
+            <p className={styles.helpText} style={{ fontSize: '0.82rem', marginBottom: '0.75rem' }}>
+              تُستخدم في لوحة الأصول والتقارير لتحويل العملات إلى العملة الأساسية. اليورو والجنيه والليرة التركية.
+            </p>
+            <div style={{ display: 'grid', gap: '0.75rem', maxWidth: '420px' }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                <span style={{ fontWeight: 600 }}>EUR → د.ل (لكل 1 يورو)</span>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={financialRateEur}
+                  onChange={(e) => setFinancialRateEur(e.target.value)}
+                  className={styles.filterControl}
+                />
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                <span style={{ fontWeight: 600 }}>GBP → د.ل (لكل 1 جنيه)</span>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={financialRateGbp}
+                  onChange={(e) => setFinancialRateGbp(e.target.value)}
+                  className={styles.filterControl}
+                />
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                <span style={{ fontWeight: 600 }}>TRY → د.ل (لكل 1 ليرة)</span>
+                <input
+                  type="number"
+                  min="0.001"
+                  step="0.001"
+                  value={financialRateTry}
+                  onChange={(e) => setFinancialRateTry(e.target.value)}
+                  className={styles.filterControl}
+                />
+              </label>
+            </div>
           </div>
 
           {pricingSuccess && (
@@ -419,7 +532,8 @@ export default function FinancialSettingsPage() {
           <div style={{ marginBottom: '1.5rem' }}>
             <h3 style={{ marginBottom: '0.5rem', fontWeight: '600' }}>أسعار الصرف</h3>
             <p className={styles.helpText} style={{ lineHeight: '1.6' }}>
-              حالياً يتم استخدام أسعار صرف افتراضية. يمكن تحديث هذه الأسعار من خلال واجهة برمجة التطبيقات أو قاعدة البيانات.
+              يتم تخزينها في إعدادات التسعير أعلاه (دولار للزبون + يورو/جنيه/ليرة للتقارير). واجهة البرمجة{' '}
+              <code style={{ fontSize: '0.85em' }}>/api/financial/exchange-rates</code> توحّد القراءة للواجهات.
             </p>
           </div>
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { convertToBaseAmount, aggregateTransactionsPostedBase } from '../../lib/financialDisplay'
 import styles from '../financial.module.css'
 import { 
   HiCurrencyDollar, 
@@ -22,15 +23,6 @@ const CURRENCIES = {
   TRY: { code: 'TRY', name: 'ليرة تركية', symbol: '₺' }
 }
 
-// Exchange rates (mock - will be fetched from API or database)
-const EXCHANGE_RATES = {
-  EUR: { EUR: 1, USD: 1.08, GBP: 0.85, LYD: 5.2, TRY: 33.5 },
-  USD: { EUR: 0.93, USD: 1, GBP: 0.79, LYD: 4.8, TRY: 31.0 },
-  GBP: { EUR: 1.18, USD: 1.27, GBP: 1, LYD: 6.1, TRY: 39.4 },
-  LYD: { EUR: 0.19, USD: 0.21, GBP: 0.16, LYD: 1, TRY: 6.4 },
-  TRY: { EUR: 0.030, USD: 0.032, GBP: 0.025, LYD: 0.16, TRY: 1 }
-}
-
 export default function FinancialReportsPage() {
   const [baseCurrency, setBaseCurrency] = useState('LYD')
   const [loading, setLoading] = useState(true)
@@ -40,6 +32,9 @@ export default function FinancialReportsPage() {
   const [assets, setAssets] = useState([])
   const [liabilities, setLiabilities] = useState([])
   const [transactions, setTransactions] = useState([])
+  const [toLYD, setToLYD] = useState({
+    LYD: 1, USD: 6, EUR: 6.5, GBP: 8, TRY: 0.2,
+  })
 
   const getDateRange = useCallback(() => {
     const today = new Date()
@@ -85,6 +80,12 @@ export default function FinancialReportsPage() {
       if (settingsResponse.ok) {
         const settings = await settingsResponse.json()
         setBaseCurrency(settings.base_currency || 'LYD')
+      }
+
+      const fxRes = await fetch('/api/financial/exchange-rates')
+      if (fxRes.ok) {
+        const fx = await fxRes.json()
+        if (fx.toLYD && typeof fx.toLYD === 'object') setToLYD(fx.toLYD)
       }
 
       // Fetch accounts
@@ -142,11 +143,8 @@ export default function FinancialReportsPage() {
     fetchData()
   }, [fetchData])
 
-  const convertToBase = (amount, fromCurrency) => {
-    if (fromCurrency === baseCurrency) return amount
-    const rate = EXCHANGE_RATES[fromCurrency]?.[baseCurrency] || 1
-    return amount * rate
-  }
+  const convertToBase = (amount, fromCurrency) =>
+    convertToBaseAmount(amount, fromCurrency, baseCurrency, toLYD)
 
   const formatCurrency = (amount, currency = baseCurrency) => {
     return new Intl.NumberFormat('ar-LY', {
@@ -177,19 +175,8 @@ export default function FinancialReportsPage() {
       return sum + convertToBase(liability.balance, liability.currency)
     }, 0)
 
-    const periodTransactions = transactions.reduce((acc, tx) => {
-      const isCredit = tx.transaction_type === 'credit' || 
-        (tx.transaction_type === 'transfer' && tx.related_account_id)
-      const amount = isCredit ? tx.amount : -tx.amount
-      const baseAmount = convertToBase(amount, tx.currency)
-      
-      acc.totalCredits += isCredit ? baseAmount : 0
-      acc.totalDebits += !isCredit ? Math.abs(baseAmount) : 0
-      acc.netFlow += baseAmount
-      acc.count++
-      
-      return acc
-    }, { totalCredits: 0, totalDebits: 0, netFlow: 0, count: 0 })
+    // Period flows: use posted amount_in_base_currency (audit-stable; transfer legs paired)
+    const periodTransactions = aggregateTransactionsPostedBase(transactions)
 
     return {
       totalAssets,

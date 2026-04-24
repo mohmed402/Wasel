@@ -37,11 +37,12 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
+    const order_source = searchParams.get('order_source')
     const limit = parseInt(searchParams.get('limit') || '100')
     const offset = parseInt(searchParams.get('offset') || '0')
 
     // Get orders from Supabase
-    const orders = await order.getAll({ status, limit, offset })
+    const orders = await order.getAll({ status, order_source, limit, offset })
 
     return NextResponse.json(orders, { status: 200 })
   } catch (error) {
